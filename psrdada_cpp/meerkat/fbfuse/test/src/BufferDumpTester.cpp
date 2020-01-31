@@ -191,7 +191,7 @@ TEST_F(BufferDumpTester, read_event)
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
     // Generate second trigger to make sure that it works the second time
-    send_json(1.0, 1.2, 200.0, 869.375e6, 2);
+    send_json(1.0, 1.2, 100.0, 869.375e6, 2);
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
