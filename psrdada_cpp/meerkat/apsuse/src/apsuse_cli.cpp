@@ -119,8 +119,8 @@ int main(int argc, char** argv)
                 {
                     Header header(input);
                     PsrDadaHeader ph;
-                    ph.set_bw(header.get<long double>("BW"));
-                    ph.set_freq(header.get<long double>("FREQ"));
+                    ph.set_bw(header.get<long double>("BW") / 1e6);
+                    ph.set_freq(header.get<long double>("FREQ") / 1e6);
                     ph.set_nchans(header.get<long double>("NCHAN"));
                     ph.set_nbits(header.get<long double>("NBIT"));
                     ph.set_tsamp(header.get<long double>("TSAMP"));
