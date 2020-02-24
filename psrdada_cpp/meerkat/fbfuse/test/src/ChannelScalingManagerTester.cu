@@ -94,7 +94,7 @@ void ChannelScalingManagerTester::calculate_std_cpu(int nsamples, thrust::host_v
     double sum_sq;
     std::vector<float> std_estimates(FBFUSE_NSAMPLES_PER_HEAP);
 
-    for (std::uint64_t ll=0; ll < FBFUSE_NCHANS/16; ++ll)
+    for (std::uint64_t ll=0; ll < FBFUSE_NCHANS; ++ll)
     {
         for (std::uint64_t mm = 0; mm < FBFUSE_NSAMPLES_PER_HEAP; ++mm)
         {
@@ -102,17 +102,21 @@ void ChannelScalingManagerTester::calculate_std_cpu(int nsamples, thrust::host_v
             sum_sq = 0.0;
             for (std::uint64_t ii=0; ii < nsamples; ++ii)
             {
-                for (std::uint64_t jj = 0; jj < 64; ++jj)
+                for (std::uint64_t jj = 0; jj < FBFUSE_TOTAL_NANTENNAS; ++jj)
                 {
                     for (std::uint64_t kk=0; kk < FBFUSE_NPOL; ++kk)
                     {
-                        auto idx = FBFUSE_NPOL*mm + (FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL)*ll + ii *(FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL) * 64 * (FBFUSE_NCHANS/16) + jj*(FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL)*(FBFUSE_NCHANS/16) + kk;
-                        sum += (taftp_voltages[idx].x + taftp_voltages[idx].y)/2;
-                        sum_sq += pow((taftp_voltages[idx].x + taftp_voltages[idx].y)/2, 2);
+                        auto idx = FBFUSE_NPOL*mm +
+                            (FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL)*ll +
+                            ii *(FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL) * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS +
+                            jj*(FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL*FBFUSE_NCHANS) + kk;
+
+                        sum += (taftp_voltages[idx].x + taftp_voltages[idx].y);
+                        sum_sq += pow(taftp_voltages[idx].x,2) + pow(taftp_voltages[idx].y, 2);
                     }
                 }
             }
-            std_estimates[mm] = std::sqrt((sum_sq/(nsamples*64*FBFUSE_NPOL) - pow(sum/(nsamples*64*FBFUSE_NPOL),2.0f)));
+            std_estimates[mm] = std::sqrt((sum_sq/(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NPOL*2) - pow(sum/(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NPOL*2),2.0f)));
         }
         input_levels[ll] = std::accumulate(std_estimates.begin(), std_estimates.end(),0.0f)/(FBFUSE_NSAMPLES_PER_HEAP); 
     }
@@ -124,7 +128,7 @@ void ChannelScalingManagerTester::compare_against_host(ChannelScalingManager::Sc
     // Implicit sync copy back to host
     thrust::host_vector<float> host_input_levels = input_levels;
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
-    for (int ii=0; ii < FBFUSE_NCHANS/16; ++ii)
+    for (int ii=0; ii < FBFUSE_NCHANS; ++ii)
     {
         ASSERT_EQ(input_levels[ii], host_input_levels[ii]);
     }
@@ -136,10 +140,9 @@ TEST_F(ChannelScalingManagerTester, test_gaussian_noise)
     std::normal_distribution<float> normal_dist(0.0, 32.0f);
     ChannelScalingTrigger trigger(_config);
     int nsamples = 16;
-    int nantennas = 64;
     //simulate noise
-    thrust::host_vector<char2> taftp_voltages_host(nsamples*nantennas*(FBFUSE_NCHANS/16)*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL);
-    thrust::host_vector<float> input_level(FBFUSE_NCHANS/16);
+    thrust::host_vector<char2> taftp_voltages_host(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NCHANS*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL);
+    thrust::host_vector<float> input_level(FBFUSE_NCHANS);
     for (int ii = 0; ii < taftp_voltages_host.size(); ++ii)
     {
         taftp_voltages_host[ii].x = static_cast<int8_t>(std::lround(normal_dist(generator)));
@@ -160,7 +163,7 @@ TEST_F(ChannelScalingManagerTester, test_gaussian_noise)
     for (std::size_t ii=0; ii < level_manager.channel_input_levels().size(); ++ii)
     {
        // BOOST_LOG_TRIVIAL(debug) << "cpu level:" << input_level[ii] << " gpu level: " << level_manager.channel_input_levels()[ii]; 
-        ASSERT_EQ((float)input_level[ii], (float)level_manager.channel_input_levels()[ii]);
+        ASSERT_NEAR((float)input_level[ii], (float)level_manager.channel_input_levels()[ii],input_level[ii]*0.0001);
     }
 }
 
