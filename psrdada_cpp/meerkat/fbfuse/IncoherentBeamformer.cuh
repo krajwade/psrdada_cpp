@@ -15,8 +15,8 @@ __global__
 void icbf_taftp_general_k(
     char4 const* __restrict__ taftp_voltages,
     int8_t* __restrict__ tf_powers,
-    float output_scale,
-    float output_offset,
+    float const* __restrict__ output_scale,
+    float const* __restrict__ output_offset,
     int nsamples);
 
 } //namespace kernels
@@ -31,6 +31,8 @@ public:
     typedef thrust::device_vector<char2> VoltageVectorType;
     // TF order
     typedef thrust::device_vector<int8_t> PowerVectorType;
+    //
+    typedef thrust::device_vector<float> ScalingVectorType;
 
 public:
     /**
@@ -51,6 +53,8 @@ public:
      */
     void beamform(VoltageVectorType const& input,
         PowerVectorType& output,
+        ScalingVectorType const& output_scale,
+        ScalingVectorType const& output_offset,
         cudaStream_t stream);
 
 private:

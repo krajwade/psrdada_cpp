@@ -1,12 +1,10 @@
-#ifndef PSRDADA_CPP_MEERKAT_FBFUSE_HEADER_HPP
-#define PSRDADA_CPP_MEERKAT_FBFUSE_HEADER_HPP
+#ifndef PSRDADA_CPP_HEADER_HPP
+#define PSRDADA_CPP_HEADER_HPP
 
 #include "psrdada_cpp/common.hpp"
 #include "psrdada_cpp/raw_bytes.hpp"
 
 namespace psrdada_cpp {
-namespace meerkat {
-namespace fbfuse {
 
 
 /**
@@ -38,7 +36,7 @@ public:
      * @return     The value corresponding to the given key
      */
     template <typename T>
-    T get(char const* key);
+    T get(char const* key) const;
 
     /**
      * @brief      Set a value in the header
@@ -59,15 +57,13 @@ public:
     void purge();
 
 private:
-    void fetch_header_string(char const* key);
+    void fetch_header_string(char const* key) const;
 
 private:
     RawBytes& _header;
     char _buffer[1024];
 };
 
-} //namespace fbfuse
-} //namespace meerkat
 } //namespace psrdada_cpp
 
-#endif //PSRDADA_CPP_MEERKAT_FBFUSE_HEADER_HPP
+#endif //PSRDADA_CPP_HEADER_HPP

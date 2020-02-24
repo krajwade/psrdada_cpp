@@ -47,32 +47,34 @@ public:
     /**
      * @brief: Get values from given key words
      */
-    void from_bytes(RawBytes& block);
+    void from_bytes(RawBytes& block, std::uint32_t beamnum);
 
     /**
-     * @ All getters for Sigproc header
+     * @ All getters for psrdada header
      */
-    double bw();
+    double bw() const;
 
-    double freq();
+    double freq() const;
 
-    std::uint32_t nbits();
+    std::uint32_t nbits() const;
 
-    double tsamp();
+    double tsamp() const;
 
-    std::string ra();
+    std::string ra() const;
 
-    std::string dec();
+    std::string dec() const;
 
-    std::string telescope();
+    std::string telescope() const;
 
-    std::string instrument();
+    std::string instrument() const;
 
-    std::string source_name();
+    std::string source_name() const;
 
-    double tstart();
+    double tstart() const;
 
-    std::uint32_t nchans();
+    std::uint32_t nchans() const;
+
+    std::uint32_t beam() const;
 
     /**
      * @brief: All the setters
@@ -84,6 +86,8 @@ public:
     void set_nbits(std::uint32_t nbits);
 
     void set_tsamp(double tsamp);
+
+    void set_beam(std::uint32_t beam);
 
     void set_ra(std::string ra);
 
@@ -99,12 +103,8 @@ public:
 
     void set_nchans(std::uint32_t nchans);
 
-    /**
-     * @brief: returns the value of the key word based on the keyword
-     */
-    std::string get_value(std::string name, std::stringstream& header);
-
 private:
+    std::string get_value(std::string name, std::stringstream& header) const;
 
     /**
      * @brief All standard PSRDADA header parameters (can add/subtract
@@ -117,6 +117,7 @@ private:
     std::uint32_t _npol;
     std::uint32_t _nbits;
     double _tsamp;
+    std::uint32_t _beam;
     std::string _source_name;
     std::string _ra;
     std::string _dec;

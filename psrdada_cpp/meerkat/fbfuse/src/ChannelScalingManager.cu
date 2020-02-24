@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <cstring>
 
+#define LOG2_FBFUSE_NSAMPLES_PER_HEAP 8
+
 namespace psrdada_cpp {
 namespace meerkat {
 namespace fbfuse {
@@ -14,18 +16,18 @@ namespace kernel{
 __global__ void calculate_std(
         char4 const* __restrict__ taftp_voltages,
         float* __restrict__ input_level,
-        int nsamples
+        std::size_t nsamples
         )
 {
     // TAFTP format
     float __shared__ std_estimates[FBFUSE_NSAMPLES_PER_HEAP];
-    int const freq_idx = blockIdx.x;
+    unsigned const freq_idx = blockIdx.x;
     double sum = 0.0;
     double sum_sq = 0.0;
 
-    for (std::uint64_t ii=0; ii < nsamples; ++ii)
+    for (std::size_t ii=0; ii < nsamples; ++ii)
     {
-        for (std::uint64_t jj = 0; jj < FBFUSE_TOTAL_NANTENNAS; ++jj)
+        for (std::size_t jj = 0; jj < FBFUSE_TOTAL_NANTENNAS; ++jj)
         {
             std::size_t idx = threadIdx.x + (FBFUSE_NSAMPLES_PER_HEAP)*freq_idx + ii * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS +     jj*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NCHANS;
             char4 temp = taftp_voltages[idx];
@@ -38,7 +40,7 @@ __global__ void calculate_std(
     std_estimates[threadIdx.x] = std::sqrt((sum_sq/(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NPOL*2) - (sum/(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NPOL*2) * sum/(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NPOL*2))));
 
     // Parallel reduction of the std_estimates
-    for (std::uint32_t ii=0 ; ii < 8; ++ii)
+    for (std::uint32_t ii = 0; ii < LOG2_FBFUSE_NSAMPLES_PER_HEAP; ++ii)
     {
         std::size_t shift = 1 << ii;
         if ((shift + threadIdx.x) < FBFUSE_NSAMPLES_PER_HEAP)
@@ -59,7 +61,7 @@ __global__ void calculate_std(
 
 ChannelScalingManager::ChannelScalingManager(PipelineConfig const& config, cudaStream_t stream)
     : _config(config)
-    , _copy_stream(stream)
+    , _stream(stream)
     , _last_sem_value(0)
 {
     BOOST_LOG_TRIVIAL(debug) << "Constructing new ChannelScalingManager instance";
@@ -125,7 +127,7 @@ bool ChannelScalingManager::update_available()
     }
 }
 
-void ChannelScalingManager::channel_statistics(int nsamples, thrust::device_vector<char2> const& taftp_voltages)
+void ChannelScalingManager::channel_statistics(thrust::device_vector<char2> const& taftp_voltages)
 {
     // This function should return the delays in GPU memory
     // First check if we need to update GPU memory
@@ -137,17 +139,19 @@ void ChannelScalingManager::channel_statistics(int nsamples, thrust::device_vect
         thrust::host_vector<float> h_ib_offsets(FBFUSE_NCHANS/FBFUSE_IB_FSCRUNCH);
         thrust::host_vector<float> h_cb_scaling(FBFUSE_NCHANS/FBFUSE_CB_FSCRUNCH);
         thrust::host_vector<float> h_ib_scaling(FBFUSE_NCHANS/FBFUSE_IB_FSCRUNCH);
-
+        std::size_t n_per_timestamp = FBFUSE_NCHANS * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NPOL * FBFUSE_NSAMPLES_PER_HEAP;
+        assert(taftp_voltages.size() % n_per_timestamp == 0 /* TAFTP voltages is not a multiple of AFTP size*/);
+        std::size_t nsamples = taftp_voltages.size() / n_per_timestamp;
         // call GPU kernel
         char4 const* taftp_voltages_ptr = reinterpret_cast<char4 const*>(thrust::raw_pointer_cast(taftp_voltages.data()));
         float* input = thrust::raw_pointer_cast(_channel_input_levels.data());
-        kernel::calculate_std<<<FBFUSE_NCHANS, FBFUSE_NSAMPLES_PER_HEAP, 0, _copy_stream>>>(
+        kernel::calculate_std<<<FBFUSE_NCHANS, FBFUSE_NSAMPLES_PER_HEAP, 0, _stream>>>(
                 taftp_voltages_ptr,
                 input,
                 nsamples);
-
+        CUDA_ERROR_CHECK(cudaStreamSynchronize(_stream));
         BOOST_LOG_TRIVIAL(debug) << "Finished running input levels kernel";
-       // Copy input levels to host and calculate statistics
+        // Copy input levels to host and calculate statistics
         thrust::copy(_channel_input_levels.begin(), _channel_input_levels.end(), h_input_levels.begin());
         BOOST_LOG_TRIVIAL(debug) << "Copied input levels to host";
         const float weights_amp = 127.0f;
@@ -157,14 +161,14 @@ void ChannelScalingManager::channel_statistics(int nsamples, thrust::device_vect
         // define function
         auto get_offset_cb = [&](float x, float y)
         {
-            float scale = std::pow(weights_amp *y*std::sqrt(static_cast<float>(_config.cb_nantennas())), 2);
+            float scale = std::pow(weights_amp * y * std::sqrt(static_cast<float>(_config.cb_nantennas())), 2);
             float dof = 2 * _config.cb_tscrunch() * _config.cb_fscrunch() * _config.npol();
             return x +  (scale * dof);
         };
 
         auto get_scale_cb = [&](float x, float y)
         {
-            float scale = std::pow(weights_amp * y*std::sqrt(static_cast<float>(_config.cb_nantennas())), 2);
+            float scale = std::pow(weights_amp * y * std::sqrt(static_cast<float>(_config.cb_nantennas())), 2);
             float  dof = 2 * _config.cb_tscrunch() * _config.cb_fscrunch() * _config.npol();
             return x + (scale * std::sqrt(2 * dof) / _config.output_level());
         };
@@ -173,7 +177,7 @@ void ChannelScalingManager::channel_statistics(int nsamples, thrust::device_vect
         {
             float scale = std::pow(y, 2);
             float dof = 2 * _config.ib_tscrunch() * _config.ib_fscrunch() * _config.ib_nantennas() * _config.npol();
-            return x +  (scale * dof);
+            return x + (scale * dof);
         };
 
         auto get_scale_ib = [&](float x, float y)
@@ -226,10 +230,11 @@ void ChannelScalingManager::channel_statistics(int nsamples, thrust::device_vect
         }
 
         // Copying these back to the device
-        h_cb_offsets = _cb_offsets;
-        h_cb_scaling = _cb_scaling;
-        h_ib_offsets = _ib_offsets;
-        h_ib_scaling = _ib_scaling;
+        _cb_offsets = h_cb_offsets;
+        _cb_scaling = h_cb_scaling;
+        _ib_offsets = h_ib_offsets;
+        _ib_scaling = h_ib_scaling
+
     }
 }
 

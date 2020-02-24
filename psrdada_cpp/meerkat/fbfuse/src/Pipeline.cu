@@ -1,5 +1,5 @@
 #include "psrdada_cpp/meerkat/fbfuse/Pipeline.cuh"
-#include "psrdada_cpp/meerkat/fbfuse/Header.hpp"
+#include "psrdada_cpp/Header.hpp"
 #include "psrdada_cpp/cuda_utils.hpp"
 #include "ascii_header.h"
 #include "cuda.h"
@@ -91,6 +91,9 @@ Pipeline::Pipeline(PipelineConfig const& config,
     _sample_clock_tick_per_block = 2 * _config.total_nchans() * _nsamples_per_dada_block;
     BOOST_LOG_TRIVIAL(debug) << "Sample clock tick per block: " << _sample_clock_tick_per_block;
 
+    //Default channel scales
+    _channel_scalings.resize(_config.nchans(), 1.0f);
+
     BOOST_LOG_TRIVIAL(debug) << "Allocating CUDA streams";
     CUDA_ERROR_CHECK(cudaStreamCreate(&_h2d_copy_stream));
     CUDA_ERROR_CHECK(cudaStreamCreate(&_processing_stream));
@@ -99,6 +102,7 @@ Pipeline::Pipeline(PipelineConfig const& config,
     BOOST_LOG_TRIVIAL(debug) << "Constructing delay and weights managers";
     _delay_manager.reset(new DelayManager(_config, _h2d_copy_stream));
     _weights_manager.reset(new WeightsManager(_config, _processing_stream));
+    _stats_manager.reset(new ChannelScalingManager(_config, _processing_stream));
     _split_transpose.reset(new SplitTranspose(_config));
     _coherent_beamformer.reset(new CoherentBeamformer(_config));
     _incoherent_beamformer.reset(new IncoherentBeamformer(_config));
@@ -154,20 +158,37 @@ void Pipeline::init(RawBytes& header)
     _ib_header_stream.release();
 }
 
-void Pipeline::process(VoltageVectorType const& taftp_vec,
+void Pipeline::process(VoltageVectorType& taftp_vec,
     PowerVectorType& tbtf_vec, PowerVectorType& tf_vec)
 {
     BOOST_LOG_TRIVIAL(debug) << "Executing coherent beamforming pipeline";
+
+    BOOST_LOG_TRIVIAL(debug) << "Checking for complex gain updates";
+    auto const& gains = _gain_manager->gains();
     BOOST_LOG_TRIVIAL(debug) << "Checking for delay updates";
     auto const& delays = _delay_manager->delays();
     BOOST_LOG_TRIVIAL(debug) << "Calculating weights at unix time: " << _unix_timestamp;
     auto const& weights = _weights_manager->weights(delays, _unix_timestamp, _delay_manager->epoch());
+    BOOST_LOG_TRIVIAL(debug) << "Checking if channel statistics update request";
+    _stats_manager->channel_statistics(taftp_vec);
+    BOOST_LOG_TRIVIAL(debug) << "Applying complex gain corrections";
+    voltage_scaling(taftp_vec, taftp_vec, gains, _channel_scalings);
+    auto const& weights = _weights_manager->weights(delays, _unix_timestamp, _delay_manager->epoch());
     BOOST_LOG_TRIVIAL(debug) << "Transposing input data from TAFTP to FTPA order";
     _split_transpose->transpose(taftp_vec, _split_transpose_output, _processing_stream);
     BOOST_LOG_TRIVIAL(debug) << "Forming coherent beams";
-    _coherent_beamformer->beamform(_split_transpose_output, weights, tbtf_vec, _processing_stream);
+    auto const& cb_scaling = _stats_manager->cb_scaling();
+    auto const& cb_offsets = _stats_manager->cb_offsets();
+    _coherent_beamformer->beamform(
+        _split_transpose_output, weights,
+        cb_scaling, cb_offsets,
+        tbtf_vec, _processing_stream);
     BOOST_LOG_TRIVIAL(debug) << "Forming incoherent beam";
-    _incoherent_beamformer->beamform(taftp_vec, tf_vec, _processing_stream);
+    auto const& ib_scaling = _stats_manager->ib_scaling();
+    auto const& ib_offsets = _stats_manager->ib_offsets();
+    _incoherent_beamformer->beamform(t
+        aftp_vec, ib_scaling, ib_offsets,
+        tf_vec, _processing_stream);
 }
 
 bool Pipeline::operator()(RawBytes& data)

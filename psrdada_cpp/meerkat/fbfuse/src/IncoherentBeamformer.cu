@@ -11,8 +11,8 @@ __global__
 void icbf_taftp_general_k(
     char4 const* __restrict__ taftp_voltages,
     int8_t* __restrict__ tf_powers,
-    float output_scale,
-    float output_offset,
+    float const* __restrict__ output_scale,  // FBFUSE_NCHANS / FBFUSE_IB_FSCRUNCH
+    float const* __restrict__ output_offset, // FBFUSE_NCHANS / FBFUSE_IB_FSCRUNCH
     int ntimestamps)
 {
     //TAFTP
@@ -55,7 +55,70 @@ void icbf_taftp_general_k(
             if (threadIdx.x % FBFUSE_IB_TSCRUNCH == 0)
             {
                 int output_buffer_idx = threadIdx.x/FBFUSE_IB_TSCRUNCH * nchans_out + start_channel_idx/FBFUSE_IB_FSCRUNCH;
-                output_buffer[output_buffer_idx] = (int8_t)((val - output_offset)/output_scale);
+                float scale = output_scale[start_channel_idx/FBFUSE_IB_FSCRUNCH];
+                float offset = output_offset[start_channel_idx/FBFUSE_IB_FSCRUNCH];
+                float power_fp32 = ((val - offset)/scale);
+                output_buffer[output_buffer_idx] = (int8_t) fmaxf(-127.0f, fminf(127.0f, power_fp32));
+            }
+            __syncthreads();
+        }
+        int output_offset = timestamp_idx * nsamps_out * nchans_out;
+        for (int idx = threadIdx.x; idx < nsamps_out * FBFUSE_NCHANS/FBFUSE_IB_FSCRUNCH; idx += blockDim.x)
+        {
+            tf_powers[output_offset + idx] = output_buffer[idx];
+        }
+       __syncthreads();
+
+    }
+}
+
+__global__
+void icbf_taftp_fp32_k(
+    char4 const* __restrict__ taftp_voltages,
+    float* __restrict__ tf_powers,
+    int ntimestamps)
+{
+    //TAFTP
+    const int tp = FBFUSE_NSAMPLES_PER_HEAP;
+    const int ftp = FBFUSE_NCHANS * tp;
+    const int aftp = FBFUSE_IB_NANTENNAS * ftp;
+    const int nchans_out = FBFUSE_NCHANS / FBFUSE_IB_FSCRUNCH;
+    const int nsamps_out = FBFUSE_NSAMPLES_PER_HEAP / FBFUSE_IB_TSCRUNCH;
+    volatile __shared__ float acc_buffer[FBFUSE_NSAMPLES_PER_HEAP];
+    volatile __shared__ float output_buffer[nsamps_out * nchans_out];
+
+    for (int timestamp_idx = blockIdx.x; timestamp_idx < ntimestamps; timestamp_idx += gridDim.x)
+    {
+        for (int start_channel_idx = 0; start_channel_idx < FBFUSE_NCHANS; start_channel_idx += FBFUSE_IB_FSCRUNCH)
+        {
+        float xx = 0.0f, yy = 0.0f, zz = 0.0f, ww = 0.0f;
+            for (int sub_channel_idx = start_channel_idx; sub_channel_idx < start_channel_idx + FBFUSE_IB_FSCRUNCH; ++sub_channel_idx)
+            {
+                for (int antenna_idx = 0; antenna_idx < FBFUSE_IB_NANTENNAS; ++antenna_idx)
+                {
+                    int input_index = timestamp_idx * aftp + antenna_idx * ftp + sub_channel_idx * tp + threadIdx.x;
+                    char4 ant = taftp_voltages[input_index];
+                    xx += ((float) ant.x) * ant.x;
+                    yy += ((float) ant.y) * ant.y;
+                    zz += ((float) ant.z) * ant.z;
+                    ww += ((float) ant.w) * ant.w;
+                }
+            }
+            float val = (xx + yy + zz + ww);
+            acc_buffer[threadIdx.x] = val;
+            __syncthreads();
+            for (int ii = 1; ii < FBFUSE_IB_TSCRUNCH; ++ii)
+            {
+                int idx = threadIdx.x + ii;
+                if (idx < FBFUSE_NSAMPLES_PER_HEAP)
+                {
+                    val += acc_buffer[idx];
+                }
+            }
+            if (threadIdx.x % FBFUSE_IB_TSCRUNCH == 0)
+            {
+                int output_buffer_idx = threadIdx.x/FBFUSE_IB_TSCRUNCH * nchans_out + start_channel_idx/FBFUSE_IB_FSCRUNCH;
+                output_buffer[output_buffer_idx] = val;
             }
             __syncthreads();
         }
@@ -67,6 +130,7 @@ void icbf_taftp_general_k(
        __syncthreads();
     }
 }
+
 
 } //namespace kernels
 
@@ -88,6 +152,8 @@ IncoherentBeamformer::~IncoherentBeamformer()
 
 void IncoherentBeamformer::beamform(VoltageVectorType const& input,
     PowerVectorType& output,
+    ScalingVectorType const& output_scale,
+    ScalingVectorType const& output_offset,
     cudaStream_t stream)
 {
     // First work out nsamples and resize output if not done already
@@ -100,17 +166,21 @@ void IncoherentBeamformer::beamform(VoltageVectorType const& input,
     << output.size() << " to " << output_size
     << " elements";
     output.resize(output_size);
+    assert(output_scale.size() == FBFUSE_NCHANS / FBFUSE_IB_FSCRUNCH /* Unexpected number of channels in scaling vector */);
+    assert(output_offset.size() == FBFUSE_NCHANS / FBFUSE_IB_FSCRUNCH /* Unexpected number of channels in offset vector */);
     int nthreads_x = FBFUSE_NSAMPLES_PER_HEAP;
     dim3 block(nthreads_x);
     dim3 grid(ntimestamps);
     char2 const* taftp_voltages_ptr = thrust::raw_pointer_cast(input.data());
+    float const* output_scale_ptr =  thrust::raw_pointer_cast(output_scale.data());
+    float const* output_offset_ptr =  thrust::raw_pointer_cast(output_offset.data());
     int8_t* tf_powers_ptr = thrust::raw_pointer_cast(output.data());
     BOOST_LOG_TRIVIAL(debug) << "Executing incoherent beamforming kernel";
     kernels::icbf_taftp_general_k<<<grid, block, 0, stream>>>(
         (char4 const*) taftp_voltages_ptr,
         tf_powers_ptr,
-        _config.ib_power_scaling(),
-        _config.ib_power_offset(),
+        output_scale_ptr,
+        output_offset_ptr,
         static_cast<int>(ntimestamps));
     CUDA_ERROR_CHECK(cudaStreamSynchronize(stream));
     BOOST_LOG_TRIVIAL(debug) << "Incoherent beamforming kernel complete";

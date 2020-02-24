@@ -19,7 +19,6 @@ class ChannelScalingManager
 public:
     typedef float ScalingType;
     typedef thrust::device_vector<ScalingType> ScalingVectorType;
-    typedef double TimeType;
 
 public:
     /**
@@ -43,7 +42,7 @@ public:
      *             from shared memory and copied to the GPU. This function
      *             is not thread-safe!!!
      */
-    void channel_statistics(int nsamples, thrust::device_vector<char2> const& taftp_voltages);
+    void channel_statistics(thrust::device_vector<char2> const& taftp_voltages);
 
     /**
      * @brief      Return the current channel input levels
@@ -77,8 +76,7 @@ private:
 
 private:
     PipelineConfig const& _config;
-    cudaStream_t _copy_stream;
-    sem_t* _channel_scaling_mutex_sem;
+    cudaStream_t _stream;
     sem_t* _channel_scaling_count_sem;
     int _last_sem_value;
     ScalingVectorType _channel_input_levels;
