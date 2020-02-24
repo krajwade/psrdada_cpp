@@ -4,6 +4,7 @@
 #include "psrdada_cpp/meerkat/fbfuse/PipelineConfig.hpp"
 #include "psrdada_cpp/meerkat/fbfuse/DelayManager.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/WeightsManager.cuh"
+#include "psrdada_cpp/meerkat/fbfuse/GainManager.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/SplitTranspose.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/CoherentBeamformer.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/IncoherentBeamformer.cuh"
@@ -85,6 +86,7 @@ private:
     std::size_t _nsamples_per_dada_block;
     std::unique_ptr<DelayManager> _delay_manager;
     std::unique_ptr<WeightsManager> _weights_manager;
+    std::unique_ptr<GainManager> _gain_manager;
     std::unique_ptr<SplitTranspose> _split_transpose;
     std::unique_ptr<CoherentBeamformer> _coherent_beamformer;
     std::unique_ptr<IncoherentBeamformer> _incoherent_beamformer;

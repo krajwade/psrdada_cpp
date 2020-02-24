@@ -158,16 +158,34 @@ void Pipeline::process(VoltageVectorType const& taftp_vec,
     PowerVectorType& tbtf_vec, PowerVectorType& tf_vec)
 {
     BOOST_LOG_TRIVIAL(debug) << "Executing coherent beamforming pipeline";
+
+    BOOST_LOG_TRIVIAL(debug) << "Checking for complex gain updates";
+    auto const& gains = _gain_manager->gains();
     BOOST_LOG_TRIVIAL(debug) << "Checking for delay updates";
     auto const& delays = _delay_manager->delays();
     BOOST_LOG_TRIVIAL(debug) << "Calculating weights at unix time: " << _unix_timestamp;
     auto const& weights = _weights_manager->weights(delays, _unix_timestamp, _delay_manager->epoch());
+
+
+    BOOST_LOG_TRIVIAL(debug) << "Checking if channel statistics need updated";
+    _stats_manager->channel_statistics(taftp_vec);
+
+
+
+    auto const& weights = _weights_manager->weights(delays, _unix_timestamp, _delay_manager->epoch());
     BOOST_LOG_TRIVIAL(debug) << "Transposing input data from TAFTP to FTPA order";
     _split_transpose->transpose(taftp_vec, _split_transpose_output, _processing_stream);
     BOOST_LOG_TRIVIAL(debug) << "Forming coherent beams";
-    _coherent_beamformer->beamform(_split_transpose_output, weights, tbtf_vec, _processing_stream);
+    //_coherent_beamformer->beamform(_split_transpose_output, weights, tbtf_vec, _processing_stream);
+    auto const& cb_scalings = _stats_manager->cb_scaling();
+    auto const& cb_offsets = _stats_manager->cb_offsets();
+    _coherent_beamformer->beamform(_split_transpose_output, weights, cb_scalings, cb_offsets, tbtf_vec, _processing_stream);
+
     BOOST_LOG_TRIVIAL(debug) << "Forming incoherent beam";
-    _incoherent_beamformer->beamform(taftp_vec, tf_vec, _processing_stream);
+    auto const& ib_scalings = _stats_manager->ib_scaling();
+    auto const& ib_offsets = _stats_manager->ib_offsets();
+    //_incoherent_beamformer->beamform(taftp_vec, tf_vec, _processing_stream);
+    _incoherent_beamformer->beamform(taftp_vec, ib_scalings, ib_offsets, tf_vec, _processing_stream);
 }
 
 bool Pipeline::operator()(RawBytes& data)
