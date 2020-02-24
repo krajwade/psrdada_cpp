@@ -18,6 +18,8 @@ public:
     typedef thrust::host_vector<char2> HostVoltageVectorType;
     typedef IncoherentBeamformer::PowerVectorType DevicePowerVectorType;
     typedef thrust::host_vector<int8_t> HostPowerVectorType;
+    typedef IncoherentBeamformer::ScalingVectorType DeviceScalingVectorType;
+    typedef thrust::host_vector<float> HostScalingVectorType;
 
 protected:
     void SetUp() override;
@@ -38,12 +40,14 @@ protected:
         int nantennas,
         int npol,
         int nsamples_per_timestamp,
-        float scale,
-        float offset);
+        float const* scale,
+        float const* offset);
 
     void compare_against_host(
         DeviceVoltageVectorType const& taftp_voltages_gpu,
         DevicePowerVectorType& tf_powers_gpu,
+        DeviceScalingVectorType const& scaling_vector,
+        DeviceScalingVectorType const& offset_vector,
         int ntimestamps);
 
 protected:

@@ -106,6 +106,7 @@ public:
     typedef thrust::device_vector<int8_t> PowerVectorType;
     // FBA order (assuming equal weight per polarisation)
     typedef thrust::device_vector<char2> WeightsVectorType;
+    typedef thrust::device_vector<float> ScalingVectorType;
 
 public:
     /**
@@ -122,11 +123,15 @@ public:
      *
      * @param      input    Input array of 8-bit voltages in FTPA order
      * @param      weights  8-bit beamforming weights in FTA order
+     * @param      scales   Power scalings to be applied when converting data back to 8-bit
+     * @param      offsets  Power offsets to be applied when converting data back to 8-bit
      * @param      output   Output array of 8-bit powers in TBTF order
      * @param[in]  stream   The CUDA stream to use for processing
      */
     void beamform(VoltageVectorType const& input,
         WeightsVectorType const& weights,
+        ScalingVectorType const& scales,
+        ScalingVectorType const& offsets,
         PowerVectorType& output,
         cudaStream_t stream);
 

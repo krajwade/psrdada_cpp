@@ -50,8 +50,8 @@ void bf_aptf_general_k(
     int2 const* __restrict__ ftpa_voltages,
     int2 const* __restrict__ fbpa_weights,
     int8_t* __restrict__ tbtf_powers,
-    float output_scale,
-    float output_offset,
+    float const* __restrict__ output_scale,
+    float const* __restrict__ output_offset,
     int nsamples)
 {
     /**
@@ -166,136 +166,11 @@ void bf_aptf_general_k(
             + (start_beam_idx + lane_idx) * tf_size
             + (output_sample_idx % FBFUSE_CB_NSAMPLES_PER_HEAP) * gridDim.y
             + blockIdx.y);
-    float power_fp32 = ((power - output_offset) / output_scale);
+    float offset = output_offset[blockIdx.y];
+    float scale = output_scale[blockIdx.y];
+    float power_fp32 = ((power - offset) / scale);
     tbtf_powers[output_idx] = (int8_t) fmaxf(-127.0f, fminf(127.0f, power_fp32));
 }
-
-__global__
-void bf_aptf_fp32_k(
-    int2 const* __restrict__ ftpa_voltages,
-    int2 const* __restrict__ fbpa_weights,
-    float* __restrict__ tbtf_powers,
-    int nsamples)
-{
-    /**
-     * Perform compile time checks on requested beamforming parameters.
-     */
-    static_assert(FBFUSE_CB_NBEAMS%FBFUSE_CB_WARP_SIZE==0,
-        "Kernel can only process a multiple of 32 beams.");
-    // This can no longer be a static assert as the NSAMPLES is no longer fixed
-    // static_assert(NSAMPLES%FBFUSE_CB_NSAMPLES_PER_BLOCK==0,
-    //    "Kernel can only process a multiple of (NWARPS_PER_BLOCK * FBFUSE_CB_TSCRUNCH) samples.");
-    static_assert(FBFUSE_CB_NTHREADS%FBFUSE_CB_WARP_SIZE==0,
-        "Number of threads must be an integer multiple of FBFUSE_CB_WARP_SIZE.");
-    static_assert(FBFUSE_CB_NANTENNAS%4==0,
-        "Number of antennas must be a multiple of 4.");
-    static_assert(FBFUSE_CB_NANTENNAS<=128,
-        "Number of antennas must be less than or equal to 128.");
-    /**
-     * Allocated shared memory to store beamforming weights and temporary space for antenna data.
-     */
-    __shared__ int2 shared_apb_weights[FBFUSE_CB_NANTENNAS/4][FBFUSE_CB_WARP_SIZE];
-    __shared__ int2 shared_antennas[FBFUSE_CB_NTHREADS/FBFUSE_CB_WARP_SIZE][FBFUSE_CB_NANTENNAS/4];
-    int const warp_idx = threadIdx.x / 0x20;
-    int const lane_idx = threadIdx.x & 0x1f;
-
-    /**
-     * Each warp processes 32 beams (i.e. one beam per lane).
-     */
-    int const start_beam_idx = blockIdx.z * FBFUSE_CB_WARP_SIZE;
-
-    /**
-     * Complex multiply accumulators
-     */
-    int xx, yy, xy, yx;
-
-    float power = 0.0f;
-    int2 antennas, weights;
-    int antenna_group_idx;
-    const int sample_offset = FBFUSE_CB_TSCRUNCH * (blockIdx.x * FBFUSE_CB_NWARPS_PER_BLOCK + warp_idx);
-
-    for (int channel_idx = blockIdx.y * FBFUSE_CB_FSCRUNCH ;
-        channel_idx < (blockIdx.y + 1) * FBFUSE_CB_FSCRUNCH ;
-        ++channel_idx)
-    {
-
-        /**
-         * Here we load all the beamforming weights neccessary for this block. Implicit assumption here is that we do not
-         * need to change the weights over the timescale of the data processed in one block. This is almost certainly OK
-         * if the input data has already been rotated to telescope boresight and we are only applying parallactic angle
-         * tracking updates.
-         *
-         * The global load is coalesced 8-byte (vectorised int2).
-         */
-        int const fbpa_weights_offset = FBFUSE_CB_NANTENNAS/4 * (FBFUSE_CB_NBEAMS * channel_idx + (start_beam_idx + warp_idx));
-        for (antenna_group_idx = lane_idx; antenna_group_idx < FBFUSE_CB_NANTENNAS/4; antenna_group_idx += FBFUSE_CB_WARP_SIZE)
-        {
-          shared_apb_weights[antenna_group_idx][warp_idx] = int2_transpose(fbpa_weights[fbpa_weights_offset + antenna_group_idx]);
-        }
-
-        //wait for all weights to load.
-        __syncthreads();
-
-        /**
-         * Below is the main loop of the kernel. Here the kernel reads all the antennas for a given sample and
-         * computes 32 beams. Each thread computes only 1 beam and access to all the antennas required for that
-         * computation is achieved via a shared memory broadcasts.
-         */
-        for (int sample_idx = sample_offset; sample_idx < (sample_offset + FBFUSE_CB_TSCRUNCH); ++sample_idx)
-        {
-            int ftpa_voltages_partial_idx = FBFUSE_CB_NANTENNAS/4 * FBFUSE_NPOL * (nsamples * channel_idx + sample_idx);
-            for (int pol_idx=0; pol_idx < FBFUSE_NPOL; ++pol_idx)
-            {
-                // Set the complex accumulator to zero before adding the next polarisation
-                xx = 0;
-                yy = 0;
-                xy = 0;
-                yx = 0;
-
-               /**
-                * Load all antennas antennas required for this sample into shared memory.
-                * Without an outer loop to allow for more antennas (which would also require more shared memory),
-                * this kernel is limited to a max of 32 * 4 = 128 antennas in a sub-array.
-                */
-                if (lane_idx < FBFUSE_CB_NANTENNAS/4)
-                {
-                    shared_antennas[warp_idx][lane_idx] = int2_transpose(ftpa_voltages[ftpa_voltages_partial_idx + lane_idx + FBFUSE_CB_NANTENNAS/4 * pol_idx]);
-                }
-                __threadfence_block();
-                for (antenna_group_idx=0; antenna_group_idx < FBFUSE_CB_NANTENNAS/4; ++antenna_group_idx)
-                {
-                    //broadcast load 4 antennas
-                    antennas = shared_antennas[warp_idx][antenna_group_idx];
-                    //load corresponding 4 weights
-                    weights = shared_apb_weights[antenna_group_idx][lane_idx];
-                    //dp4a multiply add
-                    dp4a(xx, weights.x, antennas.x);
-                    dp4a(yy, weights.y, antennas.y);
-                    dp4a(xy, weights.x, antennas.y);
-                    dp4a(yx, weights.y, antennas.x);
-                }
-                // This was previously int and was going into overflow
-                float r = (float)xx - (float)yy;
-                float i = (float)xy + (float)yx;
-                power += r*r + i*i;
-            }
-        }
-        __syncthreads();
-    }
-    int const output_sample_idx = sample_offset / FBFUSE_CB_TSCRUNCH;
-    int const tf_size = FBFUSE_CB_NSAMPLES_PER_HEAP * gridDim.y;
-    int const btf_size = gridDim.z * FBFUSE_CB_WARP_SIZE * tf_size;
-    int const output_idx = (output_sample_idx / FBFUSE_CB_NSAMPLES_PER_HEAP * btf_size
-            + (start_beam_idx + lane_idx) * tf_size
-            + (output_sample_idx % FBFUSE_CB_NSAMPLES_PER_HEAP) * gridDim.y
-            + blockIdx.y);
-    tbtf_powers[output_idx] = power;
-}
-
-
-
-
-
 
 } //namespace kernels
 
@@ -318,9 +193,13 @@ CoherentBeamformer::~CoherentBeamformer()
 
 void CoherentBeamformer::beamform(VoltageVectorType const& input,
     WeightsVectorType const& weights,
+    DeviceScalingVectorType const& output_scale,
+    DeviceScalingVectorType const& output_offset,
     PowerVectorType& output,
     cudaStream_t stream)
 {
+    assert(output_scale.size() == FBFUSE_NCHANS / FBFUSE_CB_FSCRUNCH /* Unexpected number of channels in scaling vector */);
+    assert(output_offset.size() == FBFUSE_NCHANS / FBFUSE_CB_FSCRUNCH /* Unexpected number of channels in offset vector */);
     // First work out nsamples and resize output if not done already
     BOOST_LOG_TRIVIAL(debug) << "Executing coherent beamforming";
     assert(input.size() % _size_per_sample == 0);
@@ -341,13 +220,15 @@ void CoherentBeamformer::beamform(VoltageVectorType const& input,
     char2 const* ftpa_voltages_ptr = thrust::raw_pointer_cast(input.data());
     char2 const* fbpa_weights_ptr = thrust::raw_pointer_cast(weights.data());
     int8_t* tbtf_powers_ptr = thrust::raw_pointer_cast(output.data());
+    float const* power_scaling = thrust::raw_pointer_cast(output_scale.data());
+    float const* power_offset = thrust::raw_pointer_cast(output_offset.data());
     BOOST_LOG_TRIVIAL(debug) << "Executing beamforming kernel";
     kernels::bf_aptf_general_k<<<grid, FBFUSE_CB_NTHREADS, 0, stream>>>(
         (int2 const*) ftpa_voltages_ptr,
         (int2 const*) fbpa_weights_ptr,
         tbtf_powers_ptr,
-        _config.cb_power_scaling(),
-        _config.cb_power_offset(),
+        power_scaling,
+        power_offset,
         static_cast<int>(nsamples));
     CUDA_ERROR_CHECK(cudaStreamSynchronize(stream));
     BOOST_LOG_TRIVIAL(debug) << "Beamforming kernel complete";

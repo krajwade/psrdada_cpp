@@ -45,8 +45,8 @@ void CoherentBeamformerTester::beamformer_c_reference(
     int nbeams,
     int nantennas,
     int npol,
-    float scale,
-    float offset)
+    float const* scales,
+    float const* offsets)
 {
     float xx,yy,xy,yx;
     double power_sum = 0.0;
@@ -108,7 +108,7 @@ void CoherentBeamformerTester::beamformer_c_reference(
                 power_sum += power;
                 power_sq_sum += power * power;
                 ++count;
-                tbtf_powers[tbtf_powers_idx] = (int8_t) ((power - offset)/scale);
+                tbtf_powers[tbtf_powers_idx] = (int8_t) ((power - offsets[channel_idx/fscrunch])/scales[channel_idx/fscrunch]);
             }
         }
     }
@@ -120,6 +120,8 @@ void CoherentBeamformerTester::beamformer_c_reference(
 void CoherentBeamformerTester::compare_against_host(
     DeviceVoltageVectorType const& ftpa_voltages_gpu,
     DeviceWeightsVectorType const& fbpa_weights_gpu,
+    DeviceScalingVectorType const& scales_gpu,
+    DeviceScalingVectorType const& offsets_gpu,
     DevicePowerVectorType& btf_powers_gpu,
     int nsamples)
 {
@@ -127,6 +129,11 @@ void CoherentBeamformerTester::compare_against_host(
     HostWeightsVectorType fbpa_weights_host = fbpa_weights_gpu;
     HostPowerVectorType btf_powers_cuda = btf_powers_gpu;
     HostPowerVectorType btf_powers_host(btf_powers_gpu.size());
+
+
+    HostScalingVectorType scales = scales_gpu;
+    HostScalingVectorType offsets = offsets_gpu;
+
     beamformer_c_reference(ftpa_voltages_host,
         fbpa_weights_host,
         btf_powers_host,
@@ -137,8 +144,8 @@ void CoherentBeamformerTester::compare_against_host(
         _config.cb_nbeams(),
         _config.cb_nantennas(),
         _config.npol(),
-        _config.cb_power_scaling(),
-        _config.cb_power_offset());
+        thrust::raw_pointer_cast(scales.data()),
+        thrust::raw_pointer_cast(offsets.data()));
     for (int ii = 0; ii < btf_powers_host.size(); ++ii)
     {
         ASSERT_TRUE(std::abs(static_cast<int>(btf_powers_host[ii]) - btf_powers_cuda[ii]) <= 1);
@@ -151,13 +158,16 @@ TEST_F(CoherentBeamformerTester, representative_noise_test)
     const double pi = std::acos(-1);
     _config.input_level(input_level);
     _config.output_level(32.0f);
+    DeviceScalingVectorType scales(_config.nchans() / _config.cb_fscrunch(), 1.0f);
+    DeviceScalingVectorType offsets(_config.nchans() / _config.cb_fscrunch(), 1.0f);
+
     std::default_random_engine generator;
     std::normal_distribution<float> normal_dist(0.0, input_level);
     std::uniform_real_distribution<float> uniform_dist(0.0, 2*pi);
 
     CoherentBeamformer coherent_beamformer(_config);
     std::size_t ntimestamps = max(1L, FBFUSE_CB_PACKET_SIZE/(_config.nchans()/_config.cb_fscrunch())/(_config.nsamples_per_heap()/_config.cb_tscrunch()));
-    ntimestamps = max(ntimestamps, FBFUSE_CB_NSAMPLES_PER_BLOCK / _config.nsamples_per_heap());	
+    ntimestamps = max(ntimestamps, FBFUSE_CB_NSAMPLES_PER_BLOCK / _config.nsamples_per_heap());
     printf("Using %ld timestamps\n",ntimestamps);
     std::size_t input_size = (ntimestamps * _config.cb_nantennas()
         * _config.nchans() * _config.nsamples_per_heap() * _config.npol());
@@ -180,8 +190,8 @@ TEST_F(CoherentBeamformerTester, representative_noise_test)
     DeviceVoltageVectorType ftpa_voltages_gpu = ftpa_voltages_host;
     DeviceWeightsVectorType fbpa_weights_gpu = fbpa_weights_host;
     DevicePowerVectorType btf_powers_gpu;
-    coherent_beamformer.beamform(ftpa_voltages_gpu, fbpa_weights_gpu, btf_powers_gpu, _stream);
-    compare_against_host(ftpa_voltages_gpu, fbpa_weights_gpu, btf_powers_gpu, nsamples);
+    coherent_beamformer.beamform(ftpa_voltages_gpu, fbpa_weights_gpu, scales, offsets, btf_powers_gpu, _stream);
+    compare_against_host(ftpa_voltages_gpu, fbpa_weights_gpu, scales, offets, btf_powers_gpu, nsamples);
 }
 
 } //namespace test
