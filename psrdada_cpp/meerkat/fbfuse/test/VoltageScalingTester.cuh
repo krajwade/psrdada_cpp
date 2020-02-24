@@ -38,8 +38,8 @@ protected:
         HostChannelScalesVectorType const& f_channel_scalings);
 
     void compare_against_host(
-        DeviceVoltageVectorType const& taftp_voltages_out,
-        DeviceVoltageVectorType const& taftp_voltages_out,
+        DeviceVoltageVectorType & taftp_voltages_out,
+        DeviceVoltageVectorType const& taftp_voltages_in,
         DeviceGainsVectorType const& afp_gains,
         DeviceChannelScalesVectorType const& f_channel_scalings,
         std::size_t nsamples);

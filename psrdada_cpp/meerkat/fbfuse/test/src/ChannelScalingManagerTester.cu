@@ -156,7 +156,7 @@ TEST_F(ChannelScalingManagerTester, test_gaussian_noise)
     trigger.request_statistics();
     // Get levels from the GPU
     BOOST_LOG_TRIVIAL(debug) << "Running Statistics kernel";
-    level_manager.channel_statistics(nsamples, taftp_voltages_gpu);
+    level_manager.channel_statistics(taftp_voltages_gpu);
     // Get levels from the CPU
     calculate_std_cpu(nsamples, taftp_voltages_host, input_level);
     //check if they are the same

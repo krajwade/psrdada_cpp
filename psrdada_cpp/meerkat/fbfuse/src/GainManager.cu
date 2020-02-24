@@ -150,7 +150,7 @@ bool GainManager::update_available()
     }
 }
 
-GainManager::GainVectorType const& GainManager::gains()
+GainManager::ComplexGainVectorType const& GainManager::gains()
 {
     // This function should return the gains in GPU memory
     // First check if we need to update GPU memory

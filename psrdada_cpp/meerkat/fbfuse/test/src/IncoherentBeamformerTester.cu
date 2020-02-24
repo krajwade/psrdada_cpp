@@ -43,8 +43,8 @@ void IncoherentBeamformerTester::beamformer_c_reference(
     int nantennas,
     int npol,
     int nsamples_per_timestamp,
-    float const* scale,
-    float const* offset)
+    HostScalingVectorType const& scale,
+    HostScalingVectorType const& offset)
 {
     const int tp = nsamples_per_timestamp * npol;
     const int ftp = nchannels * tp;
@@ -130,7 +130,7 @@ void IncoherentBeamformerTester::compare_against_host(
 TEST_F(IncoherentBeamformerTester, ib_representative_noise_test)
 {
     std::default_random_engine generator;
-    std::normal_distribution<float> normal_dist(0.0, input_level);
+    std::normal_distribution<float> normal_dist(0.0, 32.0f);
     IncoherentBeamformer incoherent_beamformer(_config);
     std::size_t ntimestamps = 32;
     std::size_t input_size = (ntimestamps * _config.ib_nantennas()

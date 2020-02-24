@@ -1,5 +1,6 @@
 #include "psrdada_cpp/meerkat/fbfuse/VoltageScaling.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/fbfuse_constants.hpp"
+#include "psrdada_cpp/cuda_utils.hpp"
 #include "psrdada_cpp/common.hpp"
 
 namespace psrdada_cpp {
@@ -95,13 +96,13 @@ void voltage_scaling(
     float4 const* afp_gains_ptr = reinterpret_cast<float4 const*>(thrust::raw_pointer_cast(afp_gains.data()));
     float const* f_channel_scalings_ptr = reinterpret_cast<float const*>(thrust::raw_pointer_cast(f_channel_scalings.data()));
     dim3 blocks(n_heap_groups, FBFUSE_TOTAL_NANTENNAS, FBFUSE_NCHANS);
-    kernels::apply_gains<<<blocks, FBFUSE_NSAMPLES_PER_HEAP, 0, stream>>>(
+    kernels::scale_voltages<<<blocks, FBFUSE_NSAMPLES_PER_HEAP, 0, stream>>>(
         taftp_voltages_out_ptr,
         taftp_voltages_in_ptr,
         afp_gains_ptr,
         f_channel_scalings_ptr,
         n_heap_groups);
-    CUDA_ERROR_CHECK(cudaStreamSynchronize());
+    CUDA_ERROR_CHECK(cudaStreamSynchronize(stream));
     BOOST_LOG_TRIVIAL(debug) << "Voltage scalings applied";
 }
 

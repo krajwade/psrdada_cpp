@@ -57,7 +57,7 @@ void VoltageScalingTester::voltage_scaling_reference(
                 {
                     std::size_t idx = outer_t_idx * aft + antenna_idx * ft + channel_idx * t + inner_t_idx;
                     std::size_t gain_idx = antenna_idx * nchans + channel_idx;
-                    char4 data = input[idx]
+                    char4 data = input[idx];
                     char4 gain = afp_gains[gain_idx];
                     float scaling = f_channel_scalings[channel_idx];
                     float xx = data.x * gain.x;

@@ -233,7 +233,7 @@ void ChannelScalingManager::channel_statistics(thrust::device_vector<char2> cons
         _cb_offsets = h_cb_offsets;
         _cb_scaling = h_cb_scaling;
         _ib_offsets = h_ib_offsets;
-        _ib_scaling = h_ib_scaling
+        _ib_scaling = h_ib_scaling;
 
     }
 }

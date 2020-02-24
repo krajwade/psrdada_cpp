@@ -191,7 +191,7 @@ TEST_F(CoherentBeamformerTester, representative_noise_test)
     DeviceWeightsVectorType fbpa_weights_gpu = fbpa_weights_host;
     DevicePowerVectorType btf_powers_gpu;
     coherent_beamformer.beamform(ftpa_voltages_gpu, fbpa_weights_gpu, scales, offsets, btf_powers_gpu, _stream);
-    compare_against_host(ftpa_voltages_gpu, fbpa_weights_gpu, scales, offets, btf_powers_gpu, nsamples);
+    compare_against_host(ftpa_voltages_gpu, fbpa_weights_gpu, scales, offsets, btf_powers_gpu, nsamples);
 }
 
 } //namespace test

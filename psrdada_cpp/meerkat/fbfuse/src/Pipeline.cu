@@ -172,8 +172,7 @@ void Pipeline::process(VoltageVectorType& taftp_vec,
     BOOST_LOG_TRIVIAL(debug) << "Checking if channel statistics update request";
     _stats_manager->channel_statistics(taftp_vec);
     BOOST_LOG_TRIVIAL(debug) << "Applying complex gain corrections";
-    voltage_scaling(taftp_vec, taftp_vec, gains, _channel_scalings);
-    auto const& weights = _weights_manager->weights(delays, _unix_timestamp, _delay_manager->epoch());
+    voltage_scaling(taftp_vec, taftp_vec, gains, _channel_scalings, _processing_stream);
     BOOST_LOG_TRIVIAL(debug) << "Transposing input data from TAFTP to FTPA order";
     _split_transpose->transpose(taftp_vec, _split_transpose_output, _processing_stream);
     BOOST_LOG_TRIVIAL(debug) << "Forming coherent beams";
@@ -186,9 +185,9 @@ void Pipeline::process(VoltageVectorType& taftp_vec,
     BOOST_LOG_TRIVIAL(debug) << "Forming incoherent beam";
     auto const& ib_scaling = _stats_manager->ib_scaling();
     auto const& ib_offsets = _stats_manager->ib_offsets();
-    _incoherent_beamformer->beamform(t
-        aftp_vec, ib_scaling, ib_offsets,
-        tf_vec, _processing_stream);
+    _incoherent_beamformer->beamform(
+            taftp_vec, tf_vec, ib_scaling, ib_offsets,
+             _processing_stream);
 }
 
 bool Pipeline::operator()(RawBytes& data)

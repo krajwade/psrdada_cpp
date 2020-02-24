@@ -25,7 +25,8 @@ void voltage_scaling(
     VoltageVectorType&,
     VoltageVectorType const&,
     ComplexGainVectorType const&,
-    ChannelScalesVectorType const&);
+    ChannelScalesVectorType const&,
+    cudaStream_t stream);
 
 } //namespace fbfuse
 } //namespace meerkat

@@ -193,8 +193,8 @@ CoherentBeamformer::~CoherentBeamformer()
 
 void CoherentBeamformer::beamform(VoltageVectorType const& input,
     WeightsVectorType const& weights,
-    DeviceScalingVectorType const& output_scale,
-    DeviceScalingVectorType const& output_offset,
+    ScalingVectorType const& output_scale,
+    ScalingVectorType const& output_offset,
     PowerVectorType& output,
     cudaStream_t stream)
 {
