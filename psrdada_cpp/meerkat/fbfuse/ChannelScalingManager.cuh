@@ -43,7 +43,7 @@ public:
      *             from shared memory and copied to the GPU. This function
      *             is not thread-safe!!!
      */
-    void channel_statistics(int nsamples, thrust::device_vector<char2>& taftp_voltages);
+    void channel_statistics(int nsamples, thrust::device_vector<char2> const& taftp_voltages);
 
     /**
      * @brief      Return the current channel input levels
@@ -86,7 +86,6 @@ private:
     ScalingVectorType _cb_scaling;
     ScalingVectorType _ib_offsets;
     ScalingVectorType _ib_scaling;
-    
 };
 
 } //namespace fbfuse

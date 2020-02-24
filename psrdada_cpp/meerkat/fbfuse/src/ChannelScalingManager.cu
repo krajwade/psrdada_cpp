@@ -12,48 +12,46 @@ namespace fbfuse {
 namespace kernel{
 
 __global__ void calculate_std(
-        char const* __restrict__ taftp_voltages,
+        char4 const* __restrict__ taftp_voltages,
         float* __restrict__ input_level,
         int nsamples
         )
 {
     // TAFTP format
-    float __shared__ std_estimates[FBFUSE_NSAMPLES_PER_HEAP*2];
+    float __shared__ std_estimates[FBFUSE_NSAMPLES_PER_HEAP];
     int const freq_idx = blockIdx.x;
     double sum = 0.0;
     double sum_sq = 0.0;
 
     for (std::uint64_t ii=0; ii < nsamples; ++ii)
     {
-        for (std::uint64_t jj = 0; jj < 64; ++jj)
+        for (std::uint64_t jj = 0; jj < FBFUSE_TOTAL_NANTENNAS; ++jj)
         {
-            for(std::uint64_t kk = 0; kk < FBFUSE_NPOL; ++kk)
-            {
-                auto idx = (threadIdx.x*FBFUSE_NPOL*2) + (FBFUSE_NSAMPLES_PER_HEAP*2*2)*freq_idx + ii * (FBFUSE_NSAMPLES_PER_HEAP*2*2) * 64 * FBFUSE_NCHANS/16 +     jj*(FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL*2)*FBFUSE_NCHANS/16 + 2*kk;
-                sum += (taftp_voltages[idx] + taftp_voltages[idx+1])/2;
-                sum_sq += pow((taftp_voltages[idx] + taftp_voltages[idx+1])/2, 2);
-            }
+            std::size_t idx = threadIdx.x + (FBFUSE_NSAMPLES_PER_HEAP)*freq_idx + ii * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS +     jj*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NCHANS;
+            char4 temp = taftp_voltages[idx];
+            sum += (temp.x + temp.y + temp.w + temp.z);
+            sum_sq += (temp.x*temp.x + temp.y*temp.y + temp.w*temp.w + temp.z*temp.z);
         }
     }
 
     // STD_deviation estimate
-    std_estimates[threadIdx.x] = std::sqrt((sum_sq/(nsamples*64*FBFUSE_NPOL) - pow(sum/(nsamples*64*FBFUSE_NPOL),2.0f)));
+    std_estimates[threadIdx.x] = std::sqrt((sum_sq/(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NPOL*2) - (sum/(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NPOL*2) * sum/(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NPOL*2))));
 
     // Parallel reduction of the std_estimates
     for (std::uint32_t ii=0 ; ii < 8; ++ii)
     {
-        std::size_t shift = pow(2,ii);
-        if (shift < FBFUSE_NSAMPLES_PER_HEAP)
+        std::size_t shift = 1 << ii;
+        if ((shift + threadIdx.x) < FBFUSE_NSAMPLES_PER_HEAP)
         {
             float val = (std_estimates[threadIdx.x] +
-                std_estimates[threadIdx.x + shift])/2;
+                std_estimates[threadIdx.x + shift]);
             __syncthreads();
             std_estimates[threadIdx.x] = val;
             __syncthreads();
         }
     }
     if (threadIdx.x == 0)
-        input_level[freq_idx] = std_estimates[threadIdx.x];
+        input_level[freq_idx] = std_estimates[threadIdx.x]/FBFUSE_NSAMPLES_PER_HEAP;
 }
 
 } // kernel
@@ -75,11 +73,11 @@ ChannelScalingManager::ChannelScalingManager(PipelineConfig const& config, cudaS
     }
 
     // Resize the GPU array for channel statistics
-    _channel_input_levels.resize(FBFUSE_NCHANS/16);
-    _cb_offsets.resize(FBFUSE_NCHANS/16);
-    _cb_scaling.resize(FBFUSE_NCHANS/16);
-    _ib_offsets.resize(FBFUSE_NCHANS/16);
-    _ib_scaling.resize(FBFUSE_NCHANS/16);
+    _channel_input_levels.resize(FBFUSE_NCHANS);
+    _cb_offsets.resize(FBFUSE_NCHANS/FBFUSE_CB_FSCRUNCH);
+    _cb_scaling.resize(FBFUSE_NCHANS/FBFUSE_CB_FSCRUNCH);
+    _ib_offsets.resize(FBFUSE_NCHANS/FBFUSE_IB_FSCRUNCH);
+    _ib_scaling.resize(FBFUSE_NCHANS/FBFUSE_IB_FSCRUNCH);
 }
 
 ChannelScalingManager::~ChannelScalingManager()
@@ -127,23 +125,23 @@ bool ChannelScalingManager::update_available()
     }
 }
 
-void ChannelScalingManager::channel_statistics(int nsamples, thrust::device_vector<char2>& taftp_voltages)
+void ChannelScalingManager::channel_statistics(int nsamples, thrust::device_vector<char2> const& taftp_voltages)
 {
     // This function should return the delays in GPU memory
     // First check if we need to update GPU memory
     if (update_available())
     {
         // define host arrays
-        thrust::host_vector<float> h_input_levels(FBFUSE_NCHANS/16);
-        thrust::host_vector<float> h_cb_offsets(FBFUSE_NCHANS/16);
-        thrust::host_vector<float> h_ib_offsets(FBFUSE_NCHANS/16);
-        thrust::host_vector<float> h_cb_scaling(FBFUSE_NCHANS/16);
-        thrust::host_vector<float> h_ib_scaling(FBFUSE_NCHANS/16);
+        thrust::host_vector<float> h_input_levels(FBFUSE_NCHANS);
+        thrust::host_vector<float> h_cb_offsets(FBFUSE_NCHANS/FBFUSE_CB_FSCRUNCH);
+        thrust::host_vector<float> h_ib_offsets(FBFUSE_NCHANS/FBFUSE_IB_FSCRUNCH);
+        thrust::host_vector<float> h_cb_scaling(FBFUSE_NCHANS/FBFUSE_CB_FSCRUNCH);
+        thrust::host_vector<float> h_ib_scaling(FBFUSE_NCHANS/FBFUSE_IB_FSCRUNCH);
 
         // call GPU kernel
-        char const* taftp_voltages_ptr = (char const*) thrust::raw_pointer_cast(taftp_voltages.data()); 
+        char4 const* taftp_voltages_ptr = reinterpret_cast<char4 const*>(thrust::raw_pointer_cast(taftp_voltages.data()));
         float* input = thrust::raw_pointer_cast(_channel_input_levels.data());
-        kernel::calculate_std<<<FBFUSE_NCHANS/16, FBFUSE_NSAMPLES_PER_HEAP, 0, _copy_stream>>>(
+        kernel::calculate_std<<<FBFUSE_NCHANS, FBFUSE_NSAMPLES_PER_HEAP, 0, _copy_stream>>>(
                 taftp_voltages_ptr,
                 input,
                 nsamples);
@@ -153,20 +151,76 @@ void ChannelScalingManager::channel_statistics(int nsamples, thrust::device_vect
         thrust::copy(_channel_input_levels.begin(), _channel_input_levels.end(), h_input_levels.begin());
         BOOST_LOG_TRIVIAL(debug) << "Copied input levels to host";
         const float weights_amp = 127.0f;
-        for (std::uint32_t ii = 0; ii < FBFUSE_NCHANS/16; ++ii )
+        std::size_t reduced_nchans_ib = FBFUSE_NCHANS/FBFUSE_IB_FSCRUNCH;
+        std::size_t reduced_nchans_cb = FBFUSE_NCHANS/FBFUSE_CB_FSCRUNCH;
+
+        // define function
+        auto get_offset_cb = [&](float x, float y)
         {
-            float cb_scale = std::pow(weights_amp * h_input_levels[ii]
-                    * std::sqrt(static_cast<float>(_config.cb_nantennas())), 2);
-            float cb_dof = 2 * _config.cb_tscrunch() * _config.cb_fscrunch() * _config.npol();
-            h_cb_offsets[ii] = cb_scale * cb_dof;
-            h_cb_scaling[ii] = cb_scale * std::sqrt(2 * cb_dof) / _config.output_level();
+            float scale = std::pow(weights_amp *y*std::sqrt(static_cast<float>(_config.cb_nantennas())), 2);
+            float dof = 2 * _config.cb_tscrunch() * _config.cb_fscrunch() * _config.npol();
+            return x +  (scale * dof);
+        };
+
+        auto get_scale_cb = [&](float x, float y)
+        {
+            float scale = std::pow(weights_amp * y*std::sqrt(static_cast<float>(_config.cb_nantennas())), 2);
+            float  dof = 2 * _config.cb_tscrunch() * _config.cb_fscrunch() * _config.npol();
+            return x + (scale * std::sqrt(2 * dof) / _config.output_level());
+        };
+
+        auto get_offset_ib = [&](float x, float y)
+        {
+            float scale = std::pow(y, 2);
+            float dof = 2 * _config.ib_tscrunch() * _config.ib_fscrunch() * _config.ib_nantennas() * _config.npol();
+            return x +  (scale * dof);
+        };
+
+        auto get_scale_ib = [&](float x, float y)
+        {
+            float scale = std::pow(y, 2);
+            float  dof = 2 * _config.ib_tscrunch() * _config.ib_fscrunch() * _config.ib_nantennas() * _config.npol();
+            return x + (scale * std::sqrt(2 * dof) / _config.output_level());
+        };
+
+        // CB scaling and  offsets
+        for (std::uint32_t ii = 0; ii < reduced_nchans_cb; ++ii )
+        {
+            h_cb_offsets[ii] = std::accumulate(
+                    &h_input_levels[FBFUSE_CB_FSCRUNCH*ii],
+                    &h_input_levels[FBFUSE_CB_FSCRUNCH*ii + FBFUSE_CB_FSCRUNCH],
+                    0.0f,
+                    get_offset_cb
+                    )/FBFUSE_CB_FSCRUNCH;
+
+            h_cb_scaling[ii] = std::accumulate(
+                    &h_input_levels[FBFUSE_CB_FSCRUNCH*ii],
+                    &h_input_levels[FBFUSE_CB_FSCRUNCH*ii + FBFUSE_CB_FSCRUNCH],
+                    0.0f,
+                    get_scale_cb
+                    )/FBFUSE_CB_FSCRUNCH;
+
             BOOST_LOG_TRIVIAL(debug) << "Coherent beam power offset: " << h_cb_offsets[ii];
             BOOST_LOG_TRIVIAL(debug) << "Coherent beam power scaling: " << h_cb_scaling[ii];
+        }
+
             // scaling for incoherent beamformer
-            float ib_scale = std::pow(h_input_levels[ii], 2);
-            float ib_dof = 2 * _config.ib_tscrunch() * _config.ib_fscrunch() * _config.ib_nantennas() * _config.npol();
-            h_ib_offsets[ii]  = ib_scale * ib_dof;
-            h_ib_scaling[ii] = ib_scale * std::sqrt(2 * ib_dof) / _config.output_level();
+        for (std::uint32_t ii = 0; ii < reduced_nchans_ib; ++ii )
+        {
+            h_ib_offsets[ii] = std::accumulate(
+                    &h_input_levels[FBFUSE_IB_FSCRUNCH*ii],
+                    &h_input_levels[FBFUSE_IB_FSCRUNCH*ii + FBFUSE_IB_FSCRUNCH],
+                    0.0f,
+                    get_offset_ib
+                    )/FBFUSE_IB_FSCRUNCH;
+
+            h_ib_scaling[ii] = std::accumulate(
+                    &h_input_levels[FBFUSE_IB_FSCRUNCH*ii],
+                    &h_input_levels[FBFUSE_IB_FSCRUNCH*ii + FBFUSE_IB_FSCRUNCH],
+                    0.0f,
+                    get_scale_ib
+                    )/FBFUSE_IB_FSCRUNCH;
+
             BOOST_LOG_TRIVIAL(debug) << "Incoherent beam power offset: " << h_ib_offsets[ii];
             BOOST_LOG_TRIVIAL(debug) << "Incoherent beam power scaling: " << h_ib_scaling[ii];
         }
