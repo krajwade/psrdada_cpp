@@ -41,6 +41,10 @@ install(TARGETS beam_bandpass_shm DESTINATION bin)
 add_executable(bufferdump_to_null src/bufferdump_to_null_cli.cpp)
 target_link_libraries(bufferdump_to_null ${PSRDADA_CPP_MEERKAT_FBFUSE_LIBRARIES})
 
+add_executable(bufferdump_to_file src/bufferdump_to_file_cli.cpp)
+target_link_libraries(bufferdump_to_file ${PSRDADA_CPP_MEERKAT_FBFUSE_LIBRARIES})
+
+
 add_subdirectory(test)
 
 
