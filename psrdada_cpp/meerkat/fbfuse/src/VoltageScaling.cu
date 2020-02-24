@@ -82,7 +82,7 @@ void voltage_scaling(
     std::size_t heap_group_size = FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_NPOL;
     std::size_t n_heap_groups = taftp_voltages_in.size() / heap_group_size;
     BOOST_LOG_TRIVIAL(debug) << "Voltage buffer contains " << n_heap_groups << " heaps";
-    if (taftp_voltages_in.size() % heap_group_size == 0)
+    if (taftp_voltages_in.size() % heap_group_size != 0)
     {
         std::stringstream ss;
         ss << "Voltage array is not a multiple of the heap group size ("

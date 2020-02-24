@@ -20,7 +20,7 @@ if(ENABLE_CUDA)
   string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
   if(NOT uppercase_CMAKE_BUILD_TYPE MATCHES "DEBUG")
         message("Enabling device specific compilation as not in DEBUG mode")
-        list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_75,code=sm_75) # GTX1080Ti
+        list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_61,code=sm_61) # GTX1080Ti
   endif(NOT uppercase_CMAKE_BUILD_TYPE MATCHES "DEBUG")
   #list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_52,code=sm_52) # TitanX
   #list(APPEND CUDA_NVCC_FLAGS -gencode arch=compute_50,code=sm_50) # Maxwell

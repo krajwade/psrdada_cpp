@@ -104,8 +104,8 @@ void VoltageScalingTester::compare_against_host(
     HostVoltageVectorType h_taftp_voltages_out_orig = taftp_voltages_out;
     for (int ii = 0; ii < taftp_voltages_out.size(); ++ii)
     {
-        ASSERT_EQ( h_taftp_voltages_out_orig[ii].x, h_taftp_voltages_out[ii].x);
-        ASSERT_EQ( h_taftp_voltages_out_orig[ii].y, h_taftp_voltages_out[ii].y);
+        ASSERT_NEAR( h_taftp_voltages_out_orig[ii].x, h_taftp_voltages_out[ii].x, 1);
+        ASSERT_NEAR( h_taftp_voltages_out_orig[ii].y, h_taftp_voltages_out[ii].y, 1);
     }
 }
 
