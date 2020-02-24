@@ -9,9 +9,11 @@ if(ENABLE_CUDA)
       src/PipelineConfig.cpp
       src/DelayEngineSimulator.cu
       src/DelayManager.cu
+      src/GainManager.cu
       src/IncoherentBeamformer.cu
       src/CoherentBeamformer.cu
       src/WeightsManager.cu
+      src/VoltageScaling.cu
       src/SplitTranspose.cu
       src/Pipeline.cu
       )
