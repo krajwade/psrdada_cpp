@@ -42,7 +42,7 @@ struct TestHandler
         std::vector<ChannelStatistics> stats(stats_ptr,
             stats_ptr + block.used_bytes() / sizeof(ChannelStatistics));
         ASSERT_EQ(stats.size(), _expectation.size());
-        for (int ii = 0; ii < stats.size(); ++ii)
+        for (uint64_t ii = 0; ii < stats.size(); ++ii)
         {
             EXPECT_NEAR(stats[ii].mean, _expectation[ii].mean, 0.0001f);
             EXPECT_NEAR(stats[ii].variance, _expectation[ii].variance, 0.0001f);
@@ -87,9 +87,9 @@ TEST_F(BeamBandpassGeneratorTester, mean_equals_channel_id_var_zero)
 
     std::vector<ChannelStatistics> expectation(
         nbeams * nsubbands * nchans_per_subband);
-    for (int jj = 0; jj < nbeams; ++jj)
+    for (uint64_t jj = 0; jj < nbeams; ++jj)
     {
-        for (int kk = 0; kk < nchans_per_subband * nsubbands; ++kk)
+        for (uint64_t kk = 0; kk < nchans_per_subband * nsubbands; ++kk)
         {
             expectation[jj * nchans_per_subband * nsubbands + kk].mean = static_cast<float>(kk);
             expectation[jj * nchans_per_subband * nsubbands + kk].variance = 0.0f;
@@ -102,13 +102,13 @@ TEST_F(BeamBandpassGeneratorTester, mean_equals_channel_id_var_zero)
     std::vector<char> buffer(bytes, 0);
     const unsigned int nsamps_per_heap = heap_size / nchans_per_subband;
     RawBytes block(buffer.data(), bytes, bytes);
-    for (int ii = 0; ii< bytes; ii += heap_size * nsubbands)
+    for (uint64_t ii = 0; ii< bytes; ii += heap_size * nsubbands)
     {
-        for (int subband_idx = 0; subband_idx < nsubbands; ++subband_idx)
+        for (uint64_t subband_idx = 0; subband_idx < nsubbands; ++subband_idx)
         {
-            for (int samp_idx = 0; samp_idx < nsamps_per_heap; ++samp_idx)
+            for (uint64_t samp_idx = 0; samp_idx < nsamps_per_heap; ++samp_idx)
             {
-                for (int chan_idx = 0; chan_idx < nchans_per_subband; ++chan_idx)
+                for (uint64_t chan_idx = 0; chan_idx < nchans_per_subband; ++chan_idx)
                 {
                     std::size_t index = ii + subband_idx * heap_size + samp_idx * nchans_per_subband + chan_idx;
                     buffer[index] = subband_idx * nchans_per_subband + chan_idx;

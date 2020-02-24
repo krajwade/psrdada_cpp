@@ -13,12 +13,12 @@ BeamBandpassGenerator<Handler>::BeamBandpassGenerator(
     unsigned int heap_size,
     unsigned int nbuffer_acc,
     Handler& handler)
-    : _nbeams(nbeams)
+    : _handler(handler)
+    , _nbeams(nbeams)
     , _nchans_per_subband(nchans_per_subband)
     , _nsubbands(nsubbands)
     , _heap_size(heap_size)
     , _nbuffer_acc(nbuffer_acc)
-    , _handler(handler)
     , _naccumulated(0)
     , _count(0)
 {

@@ -14,6 +14,7 @@ set(psrdada_cpp_meerkat_fbfuse_src
     src/CoherentBeamformer.cu
     src/WeightsManager.cu
     src/SplitTranspose.cu
+    src/ChannelScalingManager.cu
     src/Pipeline.cu
     )
 
