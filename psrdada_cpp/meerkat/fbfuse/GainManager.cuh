@@ -25,7 +25,7 @@ class GainManager
 {
 public:
     typedef float2 ComplexGainType;
-    typedef thrust::device_vector<DelayType> ComplexGainVectorType;
+    typedef thrust::device_vector<ComplexGainType> ComplexGainVectorType;
     typedef double TimeType;
 
 public:
