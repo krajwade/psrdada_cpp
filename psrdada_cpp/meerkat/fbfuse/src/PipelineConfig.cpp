@@ -58,6 +58,16 @@ void PipelineConfig::delay_buffer_sem(std::string const& key)
     _delay_buffer_sem = key;
 }
 
+std::string const& PipelineConfig::channel_scaling_sem() const
+{
+    return _channel_scaling_sem;
+}
+
+void PipelineConfig::channel_scaling_sem(std::string const& key)
+{
+    _channel_scaling_sem = key;
+}
+
 key_t PipelineConfig::input_dada_key() const
 {
     return _input_dada_key;

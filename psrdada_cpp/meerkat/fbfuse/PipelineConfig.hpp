@@ -71,6 +71,28 @@ public:
     void delay_buffer_sem(std::string const&);
 
     /**
+     * @brief      Get the key to POSIX semaphore
+     *             for the channel input levels.
+     *
+     * @detail     This is a counting semaphore that
+     *             is updated whenever a new request
+     *             for input levels is made
+     */
+    std::string const& channel_scaling_sem() const;
+
+    /**
+     * @brief      Set the key to POSIX semaphore
+     *             for the channel input levels.
+     *
+     * @detail     This is a counting semaphore that
+     *             is updated whenever a request for
+     *             new input levels is made.
+     */
+    void channel_scaling_sem(std::string const&);
+
+
+
+    /**
      * @brief      Get the DADA key for the input buffer
      */
     key_t input_dada_key() const;
@@ -320,6 +342,7 @@ private:
     std::string _delay_buffer_shm;
     std::string _delay_buffer_mutex;
     std::string _delay_buffer_sem;
+    std::string _channel_scaling_sem;
     key_t _input_dada_key;
     key_t _cb_dada_key;
     key_t _ib_dada_key;
