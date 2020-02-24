@@ -55,7 +55,8 @@ void icbf_taftp_general_k(
             if (threadIdx.x % FBFUSE_IB_TSCRUNCH == 0)
             {
                 int output_buffer_idx = threadIdx.x/FBFUSE_IB_TSCRUNCH * nchans_out + start_channel_idx/FBFUSE_IB_FSCRUNCH;
-                output_buffer[output_buffer_idx] = (int8_t)((val - output_offset)/output_scale);
+                float power_fp32 = ((val - output_offset)/output_scale);
+                output_buffer[output_buffer_idx] = (int8_t) fmaxf(-127.0f, fminf(127.0f, power_fp32));
             }
             __syncthreads();
         }
@@ -65,6 +66,7 @@ void icbf_taftp_general_k(
             tf_powers[output_offset + idx] = output_buffer[idx];
         }
        __syncthreads();
+
     }
 }
 
