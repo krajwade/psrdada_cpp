@@ -11,6 +11,7 @@ set(
     src/IncoherentBeamformerTester.cu
     src/PipelineTester.cu
     src/SplitTransposeTester.cu
+    src/ChannelScalingManagerTester.cu
     src/WeightsManagerTester.cu
     src/gtest_fbfuse.cu
 )

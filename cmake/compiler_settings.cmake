@@ -29,7 +29,7 @@ if (CMAKE_COMPILER_IS_GNUCXX)
     endif()
 endif ()
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -Wno-unused-local-typedefs")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -Wno-unused-local-typedefs -L/usr/local/share/apps/psrdada/lib -lpsrdada -L/usr/local/share/apps/lib64 -lcudart -L/usr/local/share/apps/gsl2.4/lib -lgsl -lgslcblas -lm")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall -Wextra -pedantic -Wno-unused-local-typedefs")
 set(CMAKE_CXX_FLAGS_DEBUG "-O3 -g -pg -Wall -Wextra -pedantic -Wno-unused-local-typedefs")
 
