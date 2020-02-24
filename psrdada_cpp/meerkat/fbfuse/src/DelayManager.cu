@@ -92,25 +92,25 @@ DelayManager::~DelayManager()
     //CUDA_ERROR_CHECK(cudaHostUnregister(static_cast<void*>(_delay_model->delays)));
     if (munmap(_delay_model, sizeof(DelayModel)) == -1)
     {
-        throw std::runtime_error(std::string(
+        BOOST_LOG_TRIVIAL(error) << (std::string(
             "Failed to unmap shared memory with error: ")
             + std::strerror(errno));
     }
     if (close(_delay_buffer_fd) == -1)
     {
-        throw std::runtime_error(std::string(
+        BOOST_LOG_TRIVIAL(error) << (std::string(
             "Failed to close shared memory file descriptor with error: ")
             + std::strerror(errno));
     }
     if (sem_close(_delay_count_sem) == -1)
     {
-        throw std::runtime_error(std::string(
+        BOOST_LOG_TRIVIAL(error) << (std::string(
             "Failed to close counting semaphore with error: ")
             + std::strerror(errno));
     }
     if (sem_close(_delay_mutex_sem) == -1)
     {
-        throw std::runtime_error(std::string(
+        BOOST_LOG_TRIVIAL(error) << (std::string(
             "Failed to close mutex semaphore with error: ")
             + std::strerror(errno));
     }

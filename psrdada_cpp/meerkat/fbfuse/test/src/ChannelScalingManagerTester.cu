@@ -57,7 +57,7 @@ ChannelScalingTrigger::~ChannelScalingTrigger()
         msg << "Failed to close semaphore "
         << _count_sem << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 }
 

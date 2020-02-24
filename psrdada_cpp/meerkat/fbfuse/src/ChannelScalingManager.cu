@@ -5,6 +5,7 @@
 #include <fcntl.h>           /* For O_* constants */
 #include <errno.h>
 #include <cstring>
+#include <numeric>
 
 #define LOG2_FBFUSE_NSAMPLES_PER_HEAP 8
 
@@ -88,9 +89,8 @@ ChannelScalingManager::~ChannelScalingManager()
 
     if (sem_close(_channel_scaling_count_sem) == -1)
     {
-        throw std::runtime_error(std::string(
-            "Failed to close counting semaphore with error: ")
-            + std::strerror(errno));
+        BOOST_LOG_TRIVIAL(error) << "Failed to close counting semaphore with error: "
+            << std::strerror(errno);
     }
 }
 
