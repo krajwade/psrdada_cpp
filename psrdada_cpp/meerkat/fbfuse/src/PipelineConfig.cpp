@@ -101,58 +101,11 @@ void PipelineConfig::ib_dada_key(key_t key)
 void PipelineConfig::output_level(float level)
 {
     _output_level = level;
-    update_power_offsets_and_scalings();
 }
 
 float PipelineConfig::output_level() const
 {
     return _output_level;
-}
-
-void PipelineConfig::input_level(float level)
-{
-    _input_level = level;
-    update_power_offsets_and_scalings();
-}
-
-void PipelineConfig::update_power_offsets_and_scalings()
-{
-    // scalings for coherent beamformer
-    const float weights_amp = 127.0f;
-    float cb_scale = std::pow(weights_amp * _input_level
-        * std::sqrt(static_cast<float>(cb_nantennas())), 2);
-    float cb_dof = 2 * cb_tscrunch() * cb_fscrunch() * npol();
-    _cb_power_offset = cb_scale * cb_dof;
-    _cb_power_scaling = cb_scale * std::sqrt(2 * cb_dof) / _output_level;
-    BOOST_LOG_TRIVIAL(debug) << "Coherent beam power offset: " << _cb_power_offset;
-    BOOST_LOG_TRIVIAL(debug) << "Coherent beam power scaling: " << _cb_power_scaling;
-    // scaling for incoherent beamformer
-    float ib_scale = std::pow(_input_level, 2);
-    float ib_dof = 2 * ib_tscrunch() * ib_fscrunch() * ib_nantennas() * npol();
-    _ib_power_offset  = ib_scale * ib_dof;
-    _ib_power_scaling = ib_scale * std::sqrt(2 * ib_dof) / _output_level;
-    BOOST_LOG_TRIVIAL(debug) << "Incoherent beam power offset: " << _ib_power_offset;
-    BOOST_LOG_TRIVIAL(debug) << "Incoherent beam power scaling: " << _ib_power_scaling;
-}
-
-float PipelineConfig::cb_power_scaling() const
-{
-    return _cb_power_scaling;
-}
-
-float PipelineConfig::cb_power_offset() const
-{
-    return _cb_power_offset;
-}
-
-float PipelineConfig::ib_power_scaling() const
-{
-    return _ib_power_scaling;
-}
-
-float PipelineConfig::ib_power_offset() const
-{
-    return _ib_power_offset;
 }
 
 double PipelineConfig::centre_frequency() const

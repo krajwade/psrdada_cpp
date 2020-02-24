@@ -26,6 +26,7 @@ class Pipeline
 public:
     typedef thrust::device_vector<char2> VoltageVectorType;
     typedef thrust::device_vector<int8_t> PowerVectorType;
+    typedef thrust::device_vector<float> ChannelScaleVectorType;
     typedef long double TimeType;
 
 public:
@@ -91,6 +92,7 @@ private:
     std::unique_ptr<CoherentBeamformer> _coherent_beamformer;
     std::unique_ptr<IncoherentBeamformer> _incoherent_beamformer;
     VoltageVectorType _split_transpose_output;
+    ChannelScaleVectorType _channel_scalings;
 
 
 };
