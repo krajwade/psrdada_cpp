@@ -146,7 +146,7 @@ TEST_F(IncoherentBeamformerTester, ib_representative_noise_test)
     DeviceVoltageVectorType taftp_voltages_gpu = taftp_voltages_host;
     DevicePowerVectorType tf_powers_gpu;
     incoherent_beamformer.beamform(taftp_voltages_gpu, tf_powers_gpu, scales, offset, _stream);
-    compare_against_host(taftp_voltages_gpu, tf_powers_gpu, ntimestamps);
+    compare_against_host(taftp_voltages_gpu, tf_powers_gpu, scales, offset, ntimestamps);
 }
 
 } //namespace test

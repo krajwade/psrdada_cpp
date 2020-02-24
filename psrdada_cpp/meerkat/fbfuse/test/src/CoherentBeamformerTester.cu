@@ -156,8 +156,6 @@ TEST_F(CoherentBeamformerTester, representative_noise_test)
 {
     const float input_level = 32.0f;
     const double pi = std::acos(-1);
-    _config.input_level(input_level);
-    _config.output_level(32.0f);
     DeviceScalingVectorType scales(_config.nchans() / _config.cb_fscrunch(), 1.0f);
     DeviceScalingVectorType offsets(_config.nchans() / _config.cb_fscrunch(), 1.0f);
 

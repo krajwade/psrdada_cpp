@@ -40,8 +40,8 @@ protected:
         int nantennas,
         int npol,
         int nsamples_per_timestamp,
-        float const* scale,
-        float const* offset);
+        HostScalingVectorType const& scale,
+        HostScalingVectorType const& offset);
 
     void compare_against_host(
         DeviceVoltageVectorType const& taftp_voltages_gpu,

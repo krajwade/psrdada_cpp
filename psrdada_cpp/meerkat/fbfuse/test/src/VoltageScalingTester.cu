@@ -44,9 +44,11 @@ void VoltageScalingTester::voltage_scaling_reference(
 {
     char4* output = reinterpret_cast<char4*>(thrust::raw_pointer_cast(taftp_voltages_out.data()));
     char4 const* input = reinterpret_cast<char4 const*>(thrust::raw_pointer_cast(taftp_voltages_in.data()));
+    float4 const* f4gains = reinterpret_cast<float4 const*>(thrust::raw_pointer_cast(afp_gains.data()));
     std::size_t const t = FBFUSE_NSAMPLES_PER_HEAP;
     std::size_t const ft = nchans * t;
     std::size_t const aft = nantennas * ft;
+
     for (std::size_t outer_t_idx = 0; outer_t_idx < n_outer_t; ++outer_t_idx)
     {
         for (std::size_t antenna_idx = 0; antenna_idx < nantennas; ++antenna_idx)
@@ -58,7 +60,7 @@ void VoltageScalingTester::voltage_scaling_reference(
                     std::size_t idx = outer_t_idx * aft + antenna_idx * ft + channel_idx * t + inner_t_idx;
                     std::size_t gain_idx = antenna_idx * nchans + channel_idx;
                     char4 data = input[idx];
-                    char4 gain = afp_gains[gain_idx];
+                    float4 gain = f4gains[gain_idx];
                     float scaling = f_channel_scalings[channel_idx];
                     float xx = data.x * gain.x;
                     float yy = data.y * gain.y;
@@ -102,7 +104,8 @@ void VoltageScalingTester::compare_against_host(
     HostVoltageVectorType h_taftp_voltages_out_orig = taftp_voltages_out;
     for (int ii = 0; ii < taftp_voltages_out.size(); ++ii)
     {
-        ASSERT_NEAR( h_taftp_voltages_out_orig[ii], h_taftp_voltages_out[ii], 0.0001);
+        ASSERT_EQ( h_taftp_voltages_out_orig[ii].x, h_taftp_voltages_out[ii].x);
+        ASSERT_EQ( h_taftp_voltages_out_orig[ii].y, h_taftp_voltages_out[ii].y);
     }
 }
 
@@ -131,13 +134,14 @@ TEST_F(VoltageScalingTester, representative_noise_test)
     {
         // Build complex weight as C * exp(i * theta).
         std::complex<float> val = std::exp(std::complex<float>(0.0f, uniform_dist(generator)));
-        h_gains[ii] = val;
+        h_gains[ii].x = val.real();
+        h_gains[ii].y = val.imag();
     }
     DeviceVoltageVectorType d_input = h_input;
     DeviceVoltageVectorType d_output(d_input.size());
     DeviceGainsVectorType d_gains = h_gains;
     DeviceChannelScalesVectorType d_scales = h_scales;
-    voltage_scaling(d_output, d_input, d_gains, d_scales);
+    voltage_scaling(d_output, d_input, d_gains, d_scales, _stream);
     compare_against_host(d_output, d_input, d_gains, d_scales, n_outer_t);
 }
 
