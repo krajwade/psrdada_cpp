@@ -97,8 +97,8 @@ void VoltageScalingTester::compare_against_host(
         h_afp_gains,
         h_f_channel_scalings,
         nsamples,
-        _config.total_nantennas(),
-        _config.nchans());
+        FBFUSE_TOTAL_NANTENNAS,
+        FBFUSE_NCHANS);
     HostVoltageVectorType h_taftp_voltages_out_orig = taftp_voltages_out;
     for (int ii = 0; ii < taftp_voltages_out.size(); ++ii)
     {
@@ -110,18 +110,16 @@ TEST_F(VoltageScalingTester, representative_noise_test)
 {
     const float input_level = 32.0f;
     const double pi = std::acos(-1);
-    _config.input_level(input_level);
-    _config.output_level(32.0f);
     std::default_random_engine generator;
     std::normal_distribution<float> normal_dist(0.0, input_level);
     std::uniform_real_distribution<float> uniform_dist(0.0, 2*pi);
 
     std::size_t n_outer_t = 10;
-    std::size_t input_size = n_outer_t * _config.nantennas() * _config.nchans() * FBFUSE_NSAMPLES_PER_HEAP * _config.npol();
+    std::size_t input_size = n_outer_t * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_NPOL;
 
     HostVoltageVectorType h_input(input_size);
-    HostGainsVectorType h_gains(_config.nantennas() * _config.nchans() * _config.npol());
-    HostChannelScalesVectorType h_scales(_config.nchans(), 1.0f);
+    HostGainsVectorType h_gains(FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS * FBFUSE_NPOL);
+    HostChannelScalesVectorType h_scales(FBFUSE_NCHANS, 1.0f);
 
     for (int ii = 0; ii < h_input.size(); ++ii)
     {
