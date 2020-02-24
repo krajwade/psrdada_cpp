@@ -9,6 +9,9 @@ PipelineConfig::PipelineConfig()
     : _delay_buffer_shm("fbfuse_delays_shm")
     , _delay_buffer_mutex("fbfuse_delays_mutex")
     , _delay_buffer_sem("fbfuse_buffer_counter")
+    , _gain_buffer_shm("fbfuse_gains_shm")
+    , _gain_buffer_mutex("fbfuse_gains_mutex")
+    , _gain_buffer_sem("fbfuse_gain_counter")
     , _input_dada_key(0xdada)
     , _cb_dada_key(0xcaca)
     , _ib_dada_key(0xeaea)
@@ -56,6 +59,37 @@ std::string const& PipelineConfig::delay_buffer_sem() const
 void PipelineConfig::delay_buffer_sem(std::string const& key)
 {
     _delay_buffer_sem = key;
+}
+
+std::string const& PipelineConfig::gain_buffer_shm() const
+{
+    return _gain_buffer_shm;
+}
+
+void PipelineConfig::gain_buffer_shm(std::string const& key)
+{
+    _gain_buffer_shm = key;
+}
+
+
+std::string const& PipelineConfig::gain_buffer_mutex() const
+{
+    return _gain_buffer_mutex;
+}
+
+void PipelineConfig::gain_buffer_mutex(std::string const& key)
+{
+    _gain_buffer_mutex = key;
+}
+
+std::string const& PipelineConfig::gain_buffer_sem() const
+{
+    return _gain_buffer_sem;
+}
+
+void PipelineConfig::gain_buffer_sem(std::string const& key)
+{
+    _gain_buffer_sem = key;
 }
 
 std::string const& PipelineConfig::channel_scaling_sem() const
