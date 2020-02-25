@@ -8,11 +8,15 @@ if(ENABLE_CUDA)
    set(psrdada_cpp_meerkat_fbfuse_src
       src/PipelineConfig.cpp
       src/BufferDump.cpp
+      src/ChannelScalingManager.cu
       src/DelayEngineSimulator.cu
       src/DelayManager.cu
+      src/GainManager.cu
+      src/GainEngineSimulator.cu
       src/IncoherentBeamformer.cu
       src/CoherentBeamformer.cu
       src/WeightsManager.cu
+      src/VoltageScaling.cu
       src/SplitTranspose.cu
       src/Pipeline.cu
       )

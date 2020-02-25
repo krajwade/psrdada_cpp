@@ -32,6 +32,7 @@ void send(boost::asio::local::stream_protocol::socket & socket, const std::strin
 void build_start_message(Message& message, std::size_t nbeams)
 {
     message.command = "start";
+    message.directory = "./";
     for (std::size_t beam_idx = 0; beam_idx < nbeams; ++beam_idx)
     {
         message.beams.emplace_back();
@@ -46,6 +47,7 @@ void build_start_message(Message& message, std::size_t nbeams)
         std::stringstream dec;
         dec << "-" << beam_idx*2 << ":00:00.00";
         metadata.dec = dec.str();
+        metadata.source_name = "test_source";
     }
 }
 
@@ -58,6 +60,7 @@ void build_json(std::stringstream& ss, Message const& message)
 {
     boost::property_tree::ptree root;
     root.put("command", message.command);
+    root.put("directory", message.directory);
     if (message.command == "start")
     {
         boost::property_tree::ptree all_beam_parameters;
@@ -66,6 +69,7 @@ void build_json(std::stringstream& ss, Message const& message)
             boost::property_tree::ptree beam_parameters;
             beam_parameters.put<std::size_t>("idx", beam.idx);
             beam_parameters.put<std::string>("name", beam.name);
+            beam_parameters.put<std::string>("source", beam.source_name);
             beam_parameters.put<std::string>("ra", beam.ra);
             beam_parameters.put<std::string>("dec", beam.dec);
             all_beam_parameters.push_back(std::make_pair("", beam_parameters));
@@ -78,6 +82,7 @@ void build_json(std::stringstream& ss, Message const& message)
 
 void send_message(Message const& message, std::string const& socket_name)
 {
+    char message_buffer[1<<16];
     try
     {
         boost::asio::io_service io_service;
@@ -89,7 +94,9 @@ void send_message(Message const& message, std::string const& socket_name)
         build_json(message_string, message);
         BOOST_LOG_TRIVIAL(debug) << "Sending message: " << message_string.str();
         message_string << "\r\n";
-       send(socket, message_string.str());
+        send(socket, message_string.str());
+        boost::system::error_code ec;
+        socket.read_some(boost::asio::buffer(message_buffer), ec);
         socket.close();
         io_service.stop();
     }
@@ -100,6 +107,8 @@ void send_message(Message const& message, std::string const& socket_name)
     }
     return;
 }
+
+
 
 void populate_header(FilHead& header)
 {
@@ -217,6 +226,7 @@ TEST_F(BeamCaptureControllerTester, do_nothing)
     Message stop_message;
     build_stop_message(stop_message);
     send_message(stop_message, socket_name);
+
 
     // Again wait for the message to take effect
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));

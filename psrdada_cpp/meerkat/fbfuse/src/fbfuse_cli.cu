@@ -80,12 +80,6 @@ int main(int argc, char** argv)
                     config.centre_frequency(value);
                 }),
            "The centre frequency (Hz) of the subband this instance will process")
-        ("input_level", po::value<float>()
-            ->notifier([&config](float value)
-                {
-                    config.input_level(value);
-                }),
-           "The standard deviation of the input data (used for calculating scaling factors)")
         ("output_level", po::value<float>()
             ->notifier([&config](float value)
                 {

@@ -127,7 +127,12 @@ void BeamCaptureController<FileWritersType>::listen()
                     auto& header = _file_writers[beam.idx]->header();
                     header.ra = parser.hhmmss_to_double(beam.ra);
                     header.dec = parser.hhmmss_to_double(beam.dec);
+                    header.source = beam.source_name;
                     _file_writers[beam.idx]->tag(beam.name);
+                    if (!message.directory.empty())
+                    {
+                        _file_writers[beam.idx]->directory(message.directory);
+                    }
                     BOOST_LOG_TRIVIAL(info) << "Enabling file writing for beam " << beam.name;
                     _file_writers[beam.idx]->enable();
                 }
@@ -147,23 +152,27 @@ void BeamCaptureController<FileWritersType>::get_message(Message& message)
 
      {
        "command": "start/stop",
+       "directory": "./blah/"
        "beam_parameters":
           [
              {
                "idx": 0,
                "name": "cfbf00000",
+               "source": "PSRJ1821+3244",
                "ra": "00:00:00.00",
                "dec": "00:00:00.00"
              },
              {
                "idx": 1,
                "name": "cfbf00001",
+               "source": "PSRJ1823+3244",
                "ra": "01:00:00.00",
                "dec": "01:00:00.00"
              },
              {
                "idx": 2,
                "name": "cfbf00002",
+               "source": "PSRJ1824+3244",
                "ra": "02:00:00.00",
                "dec": "02:00:00.00"
              }
@@ -188,21 +197,34 @@ void BeamCaptureController<FileWritersType>::get_message(Message& message)
         message_stream << message_string;
         BOOST_LOG_TRIVIAL(debug) << "Received string: " << message_stream.str();
         boost::property_tree::json_parser::read_json(message_stream, pt);
+
+        // First parse out the message command
         message.command = pt.get<std::string>("command");
         BOOST_LOG_TRIVIAL(info) << "Recieved command: '" << message.command << "'";
         if (message.command == "start")
         {
+            //Check if there is an updated output directory for the beams
+            ptree::const_assoc_iterator directory_check = pt.find("directory");
+            if( directory_check != pt.not_found())
+            {
+                message.directory = pt.get<std::string>("directory");
+                BOOST_LOG_TRIVIAL(info) << "Data will be recorded to: " << message.directory;
+            }
+
+            //Next parser out all the beam information
             BOOST_LOG_TRIVIAL(info) << "Received parameters for the following beams (index, name, RA, Dec)";
             BOOST_FOREACH(ptree::value_type& beam, pt.get_child("beam_parameters"))
             {
                 BeamMetadata metadata;
                 metadata.idx = beam.second.get<std::size_t>("idx");
                 metadata.name = beam.second.get<std::string>("name");
+                metadata.source_name = beam.second.get<std::string>("source");
                 metadata.ra = beam.second.get<std::string>("ra");
                 metadata.dec = beam.second.get<std::string>("dec");
                 message.beams.push_back(metadata);
                 BOOST_LOG_TRIVIAL(info) << metadata.idx << "\t"
                                         << metadata.name << "\t"
+                                        << metadata.source_name << "\t"
                                         << metadata.ra << "\t"
                                         << metadata.dec;
             }
@@ -242,7 +264,7 @@ bool BeamCaptureController<FileWritersType>::has_message() const
         //throw std::runtime_error(ec.message());
     }
     auto bytes = _socket->available(ec);
-    if (bytes != 0 )
+    if (bytes != 0)
     {
         return true;
     }

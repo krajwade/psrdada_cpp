@@ -50,8 +50,8 @@ void bf_aptf_general_k(
     int2 const* __restrict__ ftpa_voltages,
     int2 const* __restrict__ fbpa_weights,
     int8_t* __restrict__ tbtf_powers,
-    float output_scale,
-    float output_offset,
+    float const* __restrict__ output_scale,
+    float const* __restrict__ output_offset,
     int nsamples)
 {
     /**
@@ -166,8 +166,12 @@ void bf_aptf_general_k(
             + (start_beam_idx + lane_idx) * tf_size
             + (output_sample_idx % FBFUSE_CB_NSAMPLES_PER_HEAP) * gridDim.y
             + blockIdx.y);
-    tbtf_powers[output_idx] = (int8_t) ((power - output_offset) / output_scale);
+    float offset = output_offset[blockIdx.y];
+    float scale = output_scale[blockIdx.y];
+    float power_fp32 = ((power - offset) / scale);
+    tbtf_powers[output_idx] = (int8_t) fmaxf(-127.0f, fminf(127.0f, power_fp32));
 }
+
 } //namespace kernels
 
 
@@ -189,9 +193,13 @@ CoherentBeamformer::~CoherentBeamformer()
 
 void CoherentBeamformer::beamform(VoltageVectorType const& input,
     WeightsVectorType const& weights,
+    ScalingVectorType const& output_scale,
+    ScalingVectorType const& output_offset,
     PowerVectorType& output,
     cudaStream_t stream)
 {
+    assert(output_scale.size() == FBFUSE_NCHANS / FBFUSE_CB_FSCRUNCH /* Unexpected number of channels in scaling vector */);
+    assert(output_offset.size() == FBFUSE_NCHANS / FBFUSE_CB_FSCRUNCH /* Unexpected number of channels in offset vector */);
     // First work out nsamples and resize output if not done already
     BOOST_LOG_TRIVIAL(debug) << "Executing coherent beamforming";
     assert(input.size() % _size_per_sample == 0);
@@ -212,13 +220,15 @@ void CoherentBeamformer::beamform(VoltageVectorType const& input,
     char2 const* ftpa_voltages_ptr = thrust::raw_pointer_cast(input.data());
     char2 const* fbpa_weights_ptr = thrust::raw_pointer_cast(weights.data());
     int8_t* tbtf_powers_ptr = thrust::raw_pointer_cast(output.data());
+    float const* power_scaling = thrust::raw_pointer_cast(output_scale.data());
+    float const* power_offset = thrust::raw_pointer_cast(output_offset.data());
     BOOST_LOG_TRIVIAL(debug) << "Executing beamforming kernel";
     kernels::bf_aptf_general_k<<<grid, FBFUSE_CB_NTHREADS, 0, stream>>>(
         (int2 const*) ftpa_voltages_ptr,
         (int2 const*) fbpa_weights_ptr,
         tbtf_powers_ptr,
-        _config.cb_power_scaling(),
-        _config.cb_power_offset(),
+        power_scaling,
+        power_offset,
         static_cast<int>(nsamples));
     CUDA_ERROR_CHECK(cudaStreamSynchronize(stream));
     BOOST_LOG_TRIVIAL(debug) << "Beamforming kernel complete";

@@ -1,4 +1,4 @@
-#include "psrdada_cpp/meerkat/fbfuse/DelayEngineSimulator.cuh"
+#include "psrdada_cpp/meerkat/fbfuse/GainEngineSimulator.cuh"
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -11,53 +11,54 @@ namespace psrdada_cpp {
 namespace meerkat {
 namespace fbfuse {
 
-DelayEngineSimulator::DelayEngineSimulator(PipelineConfig const& config)
-    : _delay_buffer_shm(config.delay_buffer_shm())
-    , _delay_buffer_sem(config.delay_buffer_sem())
-    , _delay_buffer_mutex(config.delay_buffer_mutex())
+GainEngineSimulator::GainEngineSimulator(PipelineConfig const& config)
+    : _gain_buffer_shm(config.gain_buffer_shm())
+    , _gain_buffer_sem(config.gain_buffer_sem())
+    , _gain_buffer_mutex(config.gain_buffer_mutex())
+    , _expected_bytes(config.total_nantennas() * config.nchans() * config.npol() * sizeof(GainManager::ComplexGainType))
 {
-    _shm_fd = shm_open(_delay_buffer_shm.c_str(), O_CREAT | O_RDWR, 0666);
+    _shm_fd = shm_open(_gain_buffer_shm.c_str(), O_CREAT | O_RDWR, 0666);
     if (_shm_fd == -1)
     {
         std::stringstream msg;
         msg << "Failed to open shared memory named "
-        << _delay_buffer_shm << " with error: "
+        << _gain_buffer_shm << " with error: "
         << std::strerror(errno);
         throw std::runtime_error(msg.str());
     }
-    if (ftruncate(_shm_fd, sizeof(DelayModel)) == -1)
+    if (ftruncate(_shm_fd, _expected_bytes) == -1)
     {
         std::stringstream msg;
         msg << "Failed to ftruncate shared memory named "
-        << _delay_buffer_shm << " with error: "
+        << _gain_buffer_shm << " with error: "
         << std::strerror(errno);
         throw std::runtime_error(msg.str());
     }
-    _shm_ptr = mmap(0, sizeof(DelayModel), PROT_WRITE, MAP_SHARED, _shm_fd, 0);
+    _shm_ptr = mmap(0, _expected_bytes, PROT_WRITE, MAP_SHARED, _shm_fd, 0);
     if (_shm_ptr == NULL)
     {
         std::stringstream msg;
         msg << "Failed to mmap shared memory named "
-        << _delay_buffer_shm << " with error: "
+        << _gain_buffer_shm << " with error: "
         << std::strerror(errno);
         throw std::runtime_error(msg.str());
     }
-    _delay_model = static_cast<DelayModel*>(_shm_ptr);
-    _sem_id = sem_open(_delay_buffer_sem.c_str(), O_CREAT, 0666, 0);
+    _gain_model = static_cast<GainManager::ComplexGainType*>(_shm_ptr);
+    _sem_id = sem_open(_gain_buffer_sem.c_str(), O_CREAT, 0666, 0);
     if (_sem_id == SEM_FAILED)
     {
         std::stringstream msg;
-        msg << "Failed to open delay buffer semaphore "
-        << _delay_buffer_sem << " with error: "
+        msg << "Failed to open gain buffer semaphore "
+        << _gain_buffer_sem << " with error: "
         << std::strerror(errno);
         throw std::runtime_error(msg.str());
     }
-    _mutex_id = sem_open(_delay_buffer_mutex.c_str(), O_CREAT, 0666, 0);
+    _mutex_id = sem_open(_gain_buffer_mutex.c_str(), O_CREAT, 0666, 0);
     if (_mutex_id == SEM_FAILED)
     {
         std::stringstream msg;
-        msg << "Failed to open delay buffer mutex "
-        << _delay_buffer_mutex << " with error: "
+        msg << "Failed to open gain buffer mutex "
+        << _gain_buffer_mutex << " with error: "
         << std::strerror(errno);
         throw std::runtime_error(msg.str());
     }
@@ -66,13 +67,13 @@ DelayEngineSimulator::DelayEngineSimulator(PipelineConfig const& config)
     sem_post(_mutex_id);
 }
 
-DelayEngineSimulator::~DelayEngineSimulator()
+GainEngineSimulator::~GainEngineSimulator()
 {
-    if (munmap(_shm_ptr, sizeof(DelayModel)) == -1)
+    if (munmap(_shm_ptr, _expected_bytes) == -1)
     {
         std::stringstream msg;
         msg << "Failed to unmap shared memory "
-        << _delay_buffer_shm << " with error: "
+        << _gain_buffer_shm << " with error: "
         << std::strerror(errno);
         //throw std::runtime_error(msg.str());
         BOOST_LOG_TRIVIAL(error) << msg.str();
@@ -88,11 +89,11 @@ DelayEngineSimulator::~DelayEngineSimulator()
 	BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 
-    if (shm_unlink(_delay_buffer_shm.c_str()) == -1)
+    if (shm_unlink(_gain_buffer_shm.c_str()) == -1)
     {
         std::stringstream msg;
         msg << "Failed to unlink shared memory "
-        << _delay_buffer_shm << " with error: "
+        << _gain_buffer_shm << " with error: "
         << std::strerror(errno);
         //throw std::runtime_error(msg.str());
         BOOST_LOG_TRIVIAL(error) << msg.str();
@@ -102,7 +103,7 @@ DelayEngineSimulator::~DelayEngineSimulator()
     {
         std::stringstream msg;
         msg << "Failed to close semaphore "
-        << _delay_buffer_sem << " with error: "
+        << _gain_buffer_sem << " with error: "
         << std::strerror(errno);
         //throw std::runtime_error(msg.str());
         BOOST_LOG_TRIVIAL(error) << msg.str();
@@ -112,21 +113,21 @@ DelayEngineSimulator::~DelayEngineSimulator()
     {
         std::stringstream msg;
         msg << "Failed to close mutex "
-        << _delay_buffer_mutex << " with error: "
+        << _gain_buffer_mutex << " with error: "
         << std::strerror(errno);
         //throw std::runtime_error(msg.str());
         BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 }
 
-void DelayEngineSimulator::update_delays()
+void GainEngineSimulator::update_gains()
 {
     sem_post(_sem_id);
 }
 
-DelayModel* DelayEngineSimulator::delay_model()
+GainManager::ComplexGainType* GainEngineSimulator::gains()
 {
-    return _delay_model;
+    return _gain_model;
 }
 
 

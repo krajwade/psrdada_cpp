@@ -15,11 +15,13 @@ struct BeamMetadata
     std::string name;
     std::string ra;
     std::string dec;
+    std::string source_name;
 };
 
 struct Message
 {
     std::string command;
+    std::string directory;
     std::vector<BeamMetadata> beams;
 };
 

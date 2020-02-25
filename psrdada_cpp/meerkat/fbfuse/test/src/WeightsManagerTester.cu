@@ -63,7 +63,7 @@ void WeightsManagerTester::calc_weights_c_reference(
                     double phase = (t * delay_model.y + delay_model.x) * frequency;
                     sincos(TWOPI * phase, &weight.y, &weight.x);
                     compressed_weight.x = (char) round(weight.x * 127.0);
-                    compressed_weight.y = (char) round(weight.y * 127.0);
+                    compressed_weight.y = (char) round(-1.0 * weight.y * 127.0);
                     int output_idx = nantennas * ( nbeams *
                         ( time_idx * nchans + chan_idx ) + beam_idx ) + antenna_idx;
                     weights[output_idx] = compressed_weight;

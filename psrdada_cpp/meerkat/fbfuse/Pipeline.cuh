@@ -4,9 +4,12 @@
 #include "psrdada_cpp/meerkat/fbfuse/PipelineConfig.hpp"
 #include "psrdada_cpp/meerkat/fbfuse/DelayManager.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/WeightsManager.cuh"
+#include "psrdada_cpp/meerkat/fbfuse/GainManager.cuh"
+#include "psrdada_cpp/meerkat/fbfuse/ChannelScalingManager.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/SplitTranspose.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/CoherentBeamformer.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/IncoherentBeamformer.cuh"
+#include "psrdada_cpp/meerkat/fbfuse/VoltageScaling.cuh"
 #include "psrdada_cpp/dada_write_client.hpp"
 #include "psrdada_cpp/double_device_buffer.cuh"
 #include "psrdada_cpp/raw_bytes.hpp"
@@ -25,6 +28,7 @@ class Pipeline
 public:
     typedef thrust::device_vector<char2> VoltageVectorType;
     typedef thrust::device_vector<int8_t> PowerVectorType;
+    typedef thrust::device_vector<float> ChannelScaleVectorType;
     typedef long double TimeType;
 
 public:
@@ -58,7 +62,7 @@ public:
     bool operator()(RawBytes& data);
 
 private:
-    void process(VoltageVectorType const&, PowerVectorType&, PowerVectorType&);
+    void process(VoltageVectorType&, PowerVectorType&, PowerVectorType&);
     void set_header(RawBytes& header);
 
 private:
@@ -85,10 +89,13 @@ private:
     std::size_t _nsamples_per_dada_block;
     std::unique_ptr<DelayManager> _delay_manager;
     std::unique_ptr<WeightsManager> _weights_manager;
+    std::unique_ptr<GainManager> _gain_manager;
+    std::unique_ptr<ChannelScalingManager> _stats_manager;
     std::unique_ptr<SplitTranspose> _split_transpose;
     std::unique_ptr<CoherentBeamformer> _coherent_beamformer;
     std::unique_ptr<IncoherentBeamformer> _incoherent_beamformer;
     VoltageVectorType _split_transpose_output;
+    ChannelScaleVectorType _channel_scalings;
 
 
 };
