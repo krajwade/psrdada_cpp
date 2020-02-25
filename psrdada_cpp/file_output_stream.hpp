@@ -41,7 +41,7 @@ private:
 
     private:
         std::string _full_path;
-	std::size_t _bytes_requested;
+        std::size_t _bytes_requested;
         std::size_t _bytes_written;
         std::ofstream _stream;
     };

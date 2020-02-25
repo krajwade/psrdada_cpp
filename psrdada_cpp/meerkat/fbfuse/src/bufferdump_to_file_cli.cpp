@@ -9,7 +9,6 @@
 #include <dlfcn.h>
 #include <unistd.h>
 #include <csignal>
-#include <ctime>
 
 using namespace psrdada_cpp;
 
@@ -19,14 +18,6 @@ namespace
   const size_t SUCCESS = 0;
   const size_t ERROR_UNHANDLED_EXCEPTION = 2;
 
-  std::string time_now()
-  {
-      std::time_t now= std::time(0);
-      std::tm* now_tm= std::gmtime(&now);
-      char buf[42];
-      std::strftime(buf, 42, "%Y_%m_%d_%X", now_tm);
-      return buf;
-  }
 } // namespace
 
 
@@ -78,9 +69,7 @@ int main(int argc, char** argv)
         ("centre_freq,c", po::value<float>(&centre_freq)->required(),
             "Centre Frequency")
         ("bandwidth,b", po::value<float>(&bandwidth)->required(),
-            "Bandwidth of one subband")
-        ("filesuffix,f", po::value<std::string>(&filesuffix)->required(),
-            "suffix for the file");
+            "Bandwidth of one subband");
 
 
         /* Catch Error and program description */
@@ -109,11 +98,8 @@ int main(int argc, char** argv)
         std::signal(SIGINT,detail::SignalHandler);
 
        /* Setting up the pipeline based on the type of sink*/
-
-        std::string filename = time_now() + "." + filesuffix;
-        SimpleFileWriter writer(filename);
         MultiLog log1("instream");
-        meerkat::fbfuse::BufferDump<decltype(writer)> dumper(input_key, log1, writer, socket_name, max_fill_level, nantennas, subband_nchannels, nchannels, centre_freq, bandwidth);
+        meerkat::fbfuse::BufferDump dumper(input_key, log1, socket_name, max_fill_level, nantennas, subband_nchannels, nchannels, centre_freq, bandwidth);
         dumper.start();
 
       /* End Application Code */

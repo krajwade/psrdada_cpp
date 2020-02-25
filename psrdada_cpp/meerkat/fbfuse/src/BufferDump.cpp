@@ -1,11 +1,13 @@
 #include "psrdada_cpp/meerkat/fbfuse/BufferDump.hpp"
 #include "psrdada_cpp/Header.hpp"
 #include "psrdada_cpp/raw_bytes.hpp"
+#include "psrdada_cpp/file_output_stream.hpp"
 #include <boost/asio.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/optional.hpp>
 #include <cstdio>
+#include <ctime>
 #include <cstdlib>
 #include <cmath>
 #include <chrono>
@@ -17,6 +19,15 @@ namespace
     {
         return (4.15 * 0.001 * dm * (std::pow(1/(f2/1e9),2.0) - std::pow(1/(f1/1e9), 2.0)))/tsamp;
     }
+
+    std::string time_now()
+    {
+        std::time_t now= std::time(0);
+        std::tm* now_tm= std::gmtime(&now);
+        char buf[42];
+        std::strftime(buf, 42, "%Y_%m_%d_%X", now_tm);
+        return buf;
+    }
 }
 
 
@@ -24,11 +35,9 @@ namespace psrdada_cpp{
 namespace meerkat {
 namespace fbfuse{
 
-    template <typename Handler>
-        BufferDump<Handler>::BufferDump(
+        BufferDump::BufferDump(
                 key_t key,
                 MultiLog& log,
-                Handler& handler,
                 std::string socket_name,
                 float max_fill_level,
                 std::size_t nantennas,
@@ -36,8 +45,7 @@ namespace fbfuse{
                 std::size_t total_nchannels,
                 float centre_freq,
                 float bandwidth)
-          : _handler(handler)
-          , _socket_name(socket_name)
+          : _socket_name(socket_name)
           , _max_fill_level(max_fill_level)
           , _nantennas(nantennas)
           , _subband_nchans(subband_nchannels)
@@ -54,8 +62,7 @@ namespace fbfuse{
         std::memset(_header_buffer, 0, sizeof(_header_buffer));
     }
 
-    template <typename Handler>
-        BufferDump<Handler>::~BufferDump()
+        BufferDump::~BufferDump()
         {
             if (_socket)
             {
@@ -64,8 +71,7 @@ namespace fbfuse{
         }
 
 
-    template<typename Handler>
-        void BufferDump<Handler>::setup()
+        void BufferDump::setup()
         {
             boost::system::error_code ec;
             ::unlink(_socket_name.c_str()); // Remove previous binding.
@@ -76,8 +82,7 @@ namespace fbfuse{
             return;
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::start()
+        void BufferDump::start()
         {
             BOOST_LOG_TRIVIAL(info) << "Starting BufferDump instance (listenting on socket '')";
             // Open Unix socket endpoint
@@ -86,14 +91,12 @@ namespace fbfuse{
             listen();
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::stop()
+        void BufferDump::stop()
         {
             _stop = true;
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::read_dada_header()
+        void BufferDump::read_dada_header()
         {
             BOOST_LOG_TRIVIAL(info) << "Parsing DADA buffer header";
             auto& header_block = _client->header_stream().next();
@@ -109,8 +112,7 @@ namespace fbfuse{
             BOOST_LOG_TRIVIAL(info) << "Parsing complete";
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::listen()
+        void BufferDump::listen()
         {
             while (!_stop)
             {
@@ -142,8 +144,7 @@ namespace fbfuse{
             }
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::skip_block()
+        void BufferDump::skip_block()
         {
             BOOST_LOG_TRIVIAL(debug) << "Skipping DADA block";
             _client->data_stream().next();
@@ -152,8 +153,7 @@ namespace fbfuse{
             BOOST_LOG_TRIVIAL(debug) << "Current block IDX = " << _current_block_idx;
         }
 
-    template <typename Handler>
-        bool BufferDump<Handler>::has_event() const
+        bool BufferDump::has_event() const
         {
             boost::system::error_code ec;
             boost::asio::local::stream_protocol::endpoint ep(_socket_name);
@@ -172,8 +172,7 @@ namespace fbfuse{
             return false;
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::get_event(Event& event)
+        void BufferDump::get_event(Event& event)
         {
             boost::system::error_code ec;
             boost::property_tree::ptree pt;
@@ -208,8 +207,7 @@ namespace fbfuse{
             }
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::capture(Event const& event)
+        void BufferDump::capture(Event const& event)
         {
 
             std::size_t output_left_idx = 0, output_right_idx = 0;
@@ -324,16 +322,37 @@ namespace fbfuse{
                 _client->data_stream().release();
                 _current_block_idx += 1;
             }
-            BOOST_LOG_TRIVIAL(debug) << "Updating header";
+            BOOST_LOG_TRIVIAL(debug) << "Writing header to file";
             RawBytes header(_header_buffer, 4096, 4096);
             Header parser(header);
+            //Fill in Event info
+            parser.set<long double>("UTC_START", event.utc_start);
+            parser.set<long double>("UTC_END", event.utc_end);
+            parser.set<long double>("DM", event.dm);
+            parser.set<long double>("FREQ", event. reference_freq);
+            parser.set<std::string>("TRIGGER_ID", event.trigger_id);
+            // Open file for writing
+            std::string filename = time_now() + ".dat";
             std::size_t sample_clock_start = start_sample * _total_nchans * 2;
             parser.set<std::size_t>("SAMPLE_CLOCK_START", sample_clock_start);
-            _handler.init(header);
-            BOOST_LOG_TRIVIAL(debug) << "Outputing data to handler";
+            BOOST_LOG_TRIVIAL(debug) << "Outputing data to a file";
             std::size_t nbytes = _tmp_buffer.size() * sizeof(char4);
-            RawBytes output((char*) _tmp_buffer.data(), nbytes, nbytes);
-            _handler(output);
+            std::ofstream writer;
+            writer.open(filename, std::ofstream::out | std::ofstream::binary);
+            if (writer.is_open())
+            {
+                BOOST_LOG_TRIVIAL(info) << "Opened output file " << filename;
+            }
+            else
+            {
+                std::stringstream error_message;
+                error_message << "Could not open file " << filename;
+                BOOST_LOG_TRIVIAL(error) << error_message.str();
+                throw std::runtime_error(error_message.str());
+            }
+            writer.write(_header_buffer, 4096);
+            writer.write((char*) _tmp_buffer.data(), nbytes);
+            writer.close();
         }
 
 }

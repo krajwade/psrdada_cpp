@@ -3,6 +3,7 @@
 #include "psrdada_cpp/dada_db.hpp"
 #include "psrdada_cpp/dada_null_sink.hpp"
 #include "psrdada_cpp/dada_output_stream.hpp"
+#include "psrdada_cpp/Header.hpp"
 #include <iostream>
 #include <boost/asio.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -10,6 +11,7 @@
 #include <boost/optional.hpp>
 #include <sstream>
 #include <cstdlib>
+#include <thread>
 
 namespace psrdada_cpp {
 namespace meerkat {
@@ -121,9 +123,8 @@ TEST_F(BufferDumpTester, do_nothing)
         ostream(input_data_rb);
     }
 
-    NullSink sink;
     //DadaReadClient reader(buffer.key(), log);
-    BufferDump<decltype(sink)> dumper(buffer.key(), log, sink, "/tmp/buffer_dump_test.sock",
+    BufferDump dumper(buffer.key(), log, "/tmp/buffer_dump_test.sock",
                                       max_fill_level, nantennas, nchans,
                                       total_nchans, cfreq, bw );
 
@@ -173,9 +174,8 @@ TEST_F(BufferDumpTester, read_event)
         ostream(input_data_rb);
     }
 
-    NullSink sink;
     //DadaReadClient reader(buffer.key(), log);
-    BufferDump<decltype(sink)> dumper(buffer.key(), log, sink, "/tmp/buffer_dump_test.sock",
+    BufferDump dumper(buffer.key(), log, "/tmp/buffer_dump_test.sock",
                                       max_fill_level, nantennas, nchans,
                                       total_nchans, cfreq, bw );
 
