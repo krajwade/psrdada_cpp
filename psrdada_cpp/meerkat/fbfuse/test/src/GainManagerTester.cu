@@ -37,7 +37,7 @@ void GainManagerTester::compare_against_host(GainManager::ComplexGainVectorType 
     // Implicit sync copy back to host
     thrust::host_vector<GainManager::ComplexGainType> host_gains = gains;
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
-    for (int ii=0; ii < FBFUSE_CB_NBEAMS * FBFUSE_CB_NANTENNAS; ++ii)
+    for (int ii=0; ii < (_config.total_nantennas() * _config.nchans() * _config.npol()); ++ii)
     {
         ASSERT_EQ(expected_gains[ii].x, host_gains[ii].x);
         ASSERT_EQ(expected_gains[ii].y, host_gains[ii].y);

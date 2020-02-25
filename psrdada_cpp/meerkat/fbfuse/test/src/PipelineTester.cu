@@ -3,6 +3,7 @@
 #include "psrdada_cpp/meerkat/fbfuse/PipelineConfig.hpp"
 #include "psrdada_cpp/meerkat/fbfuse/test/ChannelScalingManagerTester.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/DelayEngineSimulator.cuh"
+#include "psrdada_cpp/meerkat/fbfuse/GainEngineSimulator.cuh"
 #include "psrdada_cpp/Header.hpp"
 #include "psrdada_cpp/dada_null_sink.hpp"
 #include "psrdada_cpp/dada_read_client.hpp"
@@ -36,6 +37,7 @@ void PipelineTester::SetUp()
 {
     _config.centre_frequency(1.4e9);
     _config.bandwidth(56.0e6);
+    _config.channel_scaling_sem("test_chan_scaling_sem");
     _config.delay_buffer_shm("test_delay_buffer_shm");
     _config.delay_buffer_sem("test_delay_buffer_sem");
     _config.delay_buffer_mutex("test_delay_buffer_mutex");
@@ -52,7 +54,7 @@ TEST_F(PipelineTester, simple_run_test)
 {
 
     DelayEngineSimulator simulator(_config);
-    
+    GainEngineSimulator gsimulator(_config);    
     ChannelScalingTrigger trigger(_config);
     trigger.request_statistics();
 
@@ -117,6 +119,14 @@ TEST_F(PipelineTester, simple_run_test)
     CUDA_ERROR_CHECK(cudaMallocHost((void**)&input_data_buffer, taftp_block_bytes));
     RawBytes input_data_rb(input_data_buffer, taftp_block_bytes, taftp_block_bytes);
 
+    float input_level = 32.0f;
+    _config.output_level(32.0f);
+    std::default_random_engine generator;
+    std::normal_distribution<float> normal_dist(0.0, input_level);
+    for (std::size_t idx = 0; idx < taftp_block_bytes; ++idx)
+    {
+        input_data_buffer[idx] = static_cast<int8_t>(std::lround(normal_dist(generator)));
+    }
     //Run the init
     pipeline.init(input_header_rb);
     //Loop over N data blocks and push them through the system

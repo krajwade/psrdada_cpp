@@ -101,6 +101,7 @@ Pipeline::Pipeline(PipelineConfig const& config,
 
     BOOST_LOG_TRIVIAL(debug) << "Constructing delay and weights managers";
     _delay_manager.reset(new DelayManager(_config, _h2d_copy_stream));
+    _gain_manager.reset(new GainManager(_config, _h2d_copy_stream));
     _weights_manager.reset(new WeightsManager(_config, _processing_stream));
     _stats_manager.reset(new ChannelScalingManager(_config, _processing_stream));
     _split_transpose.reset(new SplitTranspose(_config));
@@ -162,7 +163,6 @@ void Pipeline::process(VoltageVectorType& taftp_vec,
     PowerVectorType& tbtf_vec, PowerVectorType& tf_vec)
 {
     BOOST_LOG_TRIVIAL(debug) << "Executing coherent beamforming pipeline";
-
     BOOST_LOG_TRIVIAL(debug) << "Checking for complex gain updates";
     auto const& gains = _gain_manager->gains();
     BOOST_LOG_TRIVIAL(debug) << "Checking for delay updates";
