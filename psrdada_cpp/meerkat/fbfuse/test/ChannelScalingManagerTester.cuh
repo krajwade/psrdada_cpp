@@ -10,6 +10,19 @@ namespace meerkat {
 namespace fbfuse {
 namespace test {
 
+class ChannelScalingTrigger
+{
+    public:
+        ChannelScalingTrigger(PipelineConfig const& config);
+        ~ChannelScalingTrigger();
+
+        void request_statistics();
+
+    private:
+        sem_t* _count_sem;
+        std::string _channel_scaling_sem;
+};
+
 class ChannelScalingManagerTester: public ::testing::Test
 {
 protected:

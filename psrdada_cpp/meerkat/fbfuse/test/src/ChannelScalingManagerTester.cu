@@ -13,27 +13,10 @@
 #include <cmath>
 #include <complex>
 
-
-
-
 namespace psrdada_cpp {
 namespace meerkat {
 namespace fbfuse {
 namespace test {
-
-
-class ChannelScalingTrigger
-{
-    public:
-        ChannelScalingTrigger(PipelineConfig const& config);
-        ~ChannelScalingTrigger();
-
-        void request_statistics();
-
-    private:
-        sem_t* _count_sem;
-        std::string _channel_scaling_sem;
-};
 
 ChannelScalingTrigger::ChannelScalingTrigger(PipelineConfig const& config)
 : _channel_scaling_sem(config.channel_scaling_sem())

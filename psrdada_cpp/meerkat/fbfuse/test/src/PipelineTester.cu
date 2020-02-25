@@ -1,6 +1,7 @@
 #include "psrdada_cpp/meerkat/fbfuse/test/PipelineTester.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/fbfuse_constants.hpp"
 #include "psrdada_cpp/meerkat/fbfuse/PipelineConfig.hpp"
+#include "psrdada_cpp/meerkat/fbfuse/test/ChannelScalingManagerTester.cuh"
 #include "psrdada_cpp/meerkat/fbfuse/DelayEngineSimulator.cuh"
 #include "psrdada_cpp/Header.hpp"
 #include "psrdada_cpp/dada_null_sink.hpp"
@@ -38,6 +39,9 @@ void PipelineTester::SetUp()
     _config.delay_buffer_shm("test_delay_buffer_shm");
     _config.delay_buffer_sem("test_delay_buffer_sem");
     _config.delay_buffer_mutex("test_delay_buffer_mutex");
+    _config.gain_buffer_shm("test_gain_buffer_shm");
+    _config.gain_buffer_sem("test_gain_buffer_sem");
+    _config.gain_buffer_mutex("test_gain_buffer_mutex");
 }
 
 void PipelineTester::TearDown()
@@ -48,6 +52,9 @@ TEST_F(PipelineTester, simple_run_test)
 {
 
     DelayEngineSimulator simulator(_config);
+    
+    ChannelScalingTrigger trigger(_config);
+    trigger.request_statistics();
 
     int const ntimestamps_per_block = 64;
     int const taftp_block_size = (ntimestamps_per_block * _config.total_nantennas()

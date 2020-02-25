@@ -10,10 +10,10 @@ set(
     src/DelayManagerTester.cu
     src/IncoherentBeamformerTester.cu
     src/VoltageScalingTester.cu
-    src/PipelineTester.cu
     src/SplitTransposeTester.cu
     src/ChannelScalingManagerTester.cu
     src/WeightsManagerTester.cu
+    src/PipelineTester.cu
     src/gtest_fbfuse.cu
 )
 cuda_add_executable(gtest_fbfuse ${gtest_fbfuse_src} )
