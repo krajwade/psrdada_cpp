@@ -36,6 +36,7 @@ private:
     std::string const _gain_buffer_shm;
     std::string const _gain_buffer_sem;
     std::string const _gain_buffer_mutex;
+    std::size_t _expected_bytes;
     GainManager::ComplexGainType* _gain_model;
     int _shm_fd;
     void* _shm_ptr;

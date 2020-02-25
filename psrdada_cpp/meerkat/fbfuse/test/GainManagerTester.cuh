@@ -21,7 +21,7 @@ public:
     ~GainManagerTester();
 
 protected:
-    void compare_against_host(GainManager::ComplexGainVectorType const&, ComplexGainType const*);
+    void compare_against_host(GainManager::ComplexGainVectorType const&, GainManager::ComplexGainType const*);
 
 protected:
     PipelineConfig _config;

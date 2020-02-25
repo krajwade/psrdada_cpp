@@ -15,10 +15,8 @@ GainEngineSimulator::GainEngineSimulator(PipelineConfig const& config)
     : _gain_buffer_shm(config.gain_buffer_shm())
     , _gain_buffer_sem(config.gain_buffer_sem())
     , _gain_buffer_mutex(config.gain_buffer_mutex())
+    , _expected_bytes(config.total_nantennas() * config.nchans() * config.npol() * sizeof(GainManager::ComplexGainType))
 {
-
-    std::size_t expected_bytes = config.nantennas() * config.nchans() * config.npol() * sizeof(GainManager::ComplexGainType);
-
     _shm_fd = shm_open(_gain_buffer_shm.c_str(), O_CREAT | O_RDWR, 0666);
     if (_shm_fd == -1)
     {
@@ -28,7 +26,7 @@ GainEngineSimulator::GainEngineSimulator(PipelineConfig const& config)
         << std::strerror(errno);
         throw std::runtime_error(msg.str());
     }
-    if (ftruncate(_shm_fd, expected_bytes) == -1)
+    if (ftruncate(_shm_fd, _expected_bytes) == -1)
     {
         std::stringstream msg;
         msg << "Failed to ftruncate shared memory named "
@@ -36,7 +34,7 @@ GainEngineSimulator::GainEngineSimulator(PipelineConfig const& config)
         << std::strerror(errno);
         throw std::runtime_error(msg.str());
     }
-    _shm_ptr = mmap(0, expected_bytes, PROT_WRITE, MAP_SHARED, _shm_fd, 0);
+    _shm_ptr = mmap(0, _expected_bytes, PROT_WRITE, MAP_SHARED, _shm_fd, 0);
     if (_shm_ptr == NULL)
     {
         std::stringstream msg;
@@ -71,7 +69,7 @@ GainEngineSimulator::GainEngineSimulator(PipelineConfig const& config)
 
 GainEngineSimulator::~GainEngineSimulator()
 {
-    if (munmap(_shm_ptr, sizeof(GainModel)) == -1)
+    if (munmap(_shm_ptr, _expected_bytes) == -1)
     {
         std::stringstream msg;
         msg << "Failed to unmap shared memory "

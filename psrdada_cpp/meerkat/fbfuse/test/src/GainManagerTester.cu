@@ -35,7 +35,7 @@ void GainManagerTester::TearDown()
 void GainManagerTester::compare_against_host(GainManager::ComplexGainVectorType const& gains, GainManager::ComplexGainType const* expected_gains)
 {
     // Implicit sync copy back to host
-    thrust::host_vector<GainManager::GainType> host_gains = gains;
+    thrust::host_vector<GainManager::ComplexGainType> host_gains = gains;
     CUDA_ERROR_CHECK(cudaDeviceSynchronize());
     for (int ii=0; ii < FBFUSE_CB_NBEAMS * FBFUSE_CB_NANTENNAS; ++ii)
     {
@@ -51,7 +51,7 @@ TEST_F(GainManagerTester, test_updates)
     simulator.update_gains();
     auto const& gain_vector = gain_manager.gains();
     compare_against_host(gain_vector, simulator.gains());
-    std::size_t expected_bytes = _config.nantennas() * _config.nchans() * _config.npol() * sizeof(GainManager::ComplexGainType);
+    std::size_t expected_bytes = _config.total_nantennas() * _config.nchans() * _config.npol() * sizeof(GainManager::ComplexGainType);
     std::memset(static_cast<void*>(simulator.gains()), 1, expected_bytes);
     simulator.update_gains();
     auto const& gain_vector_2 = gain_manager.gains();
