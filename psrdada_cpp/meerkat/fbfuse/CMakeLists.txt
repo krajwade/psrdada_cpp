@@ -11,6 +11,7 @@ if(ENABLE_CUDA)
       src/DelayEngineSimulator.cu
       src/DelayManager.cu
       src/GainManager.cu
+      src/GainEngineSimulator.cu
       src/IncoherentBeamformer.cu
       src/CoherentBeamformer.cu
       src/WeightsManager.cu

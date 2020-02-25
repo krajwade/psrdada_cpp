@@ -8,6 +8,7 @@ set(
     src/BeamBandpassGeneratorTester.cpp
     src/CoherentBeamformerTester.cu
     src/DelayManagerTester.cu
+    src/GainManagerTester.cu
     src/IncoherentBeamformerTester.cu
     src/VoltageScalingTester.cu
     src/SplitTransposeTester.cu
