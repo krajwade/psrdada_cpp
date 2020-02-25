@@ -238,27 +238,27 @@ void ChannelScalingManager::channel_statistics(thrust::device_vector<char2> cons
     }
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::channel_input_levels() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::channel_input_levels() const
 {
     return _channel_input_levels;
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::cb_offsets() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::cb_offsets() const
 {
     return _cb_offsets;
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::cb_scaling() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::cb_scaling() const
 {
     return _cb_scaling;
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::ib_offsets() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::ib_offsets() const
 {
     return _ib_offsets;
 }
 
-ChannelScalingManager::ScalingVectorType ChannelScalingManager::ib_scaling() const
+ChannelScalingManager::ScalingVectorType const& ChannelScalingManager::ib_scaling() const
 {
     return _ib_scaling;
 }

@@ -47,28 +47,28 @@ public:
     /**
      * @brief      Return the current channel input levels
      */
-    ScalingVectorType channel_input_levels() const;
+    ScalingVectorType const& channel_input_levels() const;
 
 
     /**
      * @brief      Return the current coherent beam offsets
      */
-    ScalingVectorType cb_offsets() const;
+    ScalingVectorType const& cb_offsets() const;
 
     /**
      * @brief      Return the current coherent beam scaling
      */
-    ScalingVectorType cb_scaling() const;
+    ScalingVectorType const& cb_scaling() const;
 
     /**
      * @brief      Return the current incoherent beam offsets
      */
-    ScalingVectorType ib_offsets() const;
+    ScalingVectorType const& ib_offsets() const;
 
     /**
      * @brief      Return the current incoherent beam scaling
      */
-    ScalingVectorType ib_scaling() const;
+    ScalingVectorType const& ib_scaling() const;
 
 
 private:
