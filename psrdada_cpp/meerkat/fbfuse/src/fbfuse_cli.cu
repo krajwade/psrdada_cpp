@@ -66,6 +66,22 @@ int main(int argc, char** argv)
                     config.delay_buffer_sem(key + "_count");
                 }),
            "The root of the POSIX key for the delay buffer shared memory and semaphores")
+        ("gain_key_root", po::value<std::string>()
+            ->required()
+            ->notifier([&config](std::string key)
+                {
+                    config.gain_buffer_shm(key);
+                    config.gain_buffer_mutex(key + "_mutex");
+                    config.gain_buffer_sem(key + "_count");
+                }),
+           "The root of the POSIX key for the gain buffer shared memory and semaphores")
+        ("level_trigger_sem", po::value<std::string>()
+            ->required()
+            ->notifier([&config](std::string key)
+                {
+                    config.channel_scaling_sem(key)
+                }),
+           "The semaphore used for triggering of the channel scaling system")
         ("bandwidth", po::value<double>()
             ->required()
             ->notifier([&config](double value)
@@ -81,6 +97,7 @@ int main(int argc, char** argv)
                 }),
            "The centre frequency (Hz) of the subband this instance will process")
         ("output_level", po::value<float>()
+            ->default_value(32.0f)
             ->notifier([&config](float value)
                 {
                     config.output_level(value);
