@@ -79,7 +79,7 @@ int main(int argc, char** argv)
             ->required()
             ->notifier([&config](std::string key)
                 {
-                    config.channel_scaling_sem(key)
+                    config.channel_scaling_sem(key);
                 }),
            "The semaphore used for triggering of the channel scaling system")
         ("bandwidth", po::value<double>()
