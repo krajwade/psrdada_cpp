@@ -28,8 +28,9 @@ namespace fbfuse {
  *         1) start time (utc): UTC start time of the burst at the reference frequency. Note that the start time will change depending on how many samples to save before the burst.
  *         2) end time (utc) :  UTC end time of the burst at the reference frequency. Note that the end time will change depending on how many samples to save after the burst.
  *         3) DM:  Dispersion Measure of the burst.
- *         4) Reference Frequency: Reference Frequency is the highest frequency of the subband in question
- *         5) Trigger ID: UNique ID for the trigger
+ *         4) Reference Frequency: Reference Frequency is the highest frequency corresponding to the start time of the event.
+ *         5) Width: Width of the trigger event in seconds
+ *         6) Trigger ID: UNique ID for the trigger
  **/
 
 /**

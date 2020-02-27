@@ -33,20 +33,20 @@ void send(boost::asio::local::stream_protocol::socket & socket, const std::strin
     }
 }
 
-void get_json(std::stringstream& ss, long double starttime, long double endtime, float dm, float ref_freq, std::size_t trig_id )
+void get_json(std::stringstream& ss, long double starttime, long double endtime, float dm, float ref_freq, std::string trig_id )
 {
     boost::property_tree::ptree pt;
     pt.put<long double>("utc_start", starttime);
     pt.put<long double>("utc_end", endtime);
     pt.put<float>("dm", dm);
     pt.put<float>("reference_freq", ref_freq);
-    pt.put<float>("trigger_id", trig_id);
+    pt.put<std::string>("trigger_id", trig_id);
     boost::property_tree::json_parser::write_json(ss, pt);
     return;
 }
 
-void send_json(long double starttime, long double endtime, float dm, float ref_freq, std::size_t trig_id)
-{ 
+void send_json(long double starttime, long double endtime, float dm, float ref_freq, std::string trig_id)
+{
     try
     {
         boost::asio::io_service io_service;
@@ -54,7 +54,7 @@ void send_json(long double starttime, long double endtime, float dm, float ref_f
         boost::asio::local::stream_protocol::endpoint ep("/tmp/buffer_dump_test.sock");
         socket.connect(ep);
         //Send the message
-        std::stringstream event_string; 
+        std::stringstream event_string;
         get_json(event_string, starttime, endtime, dm, ref_freq, trig_id);
         BOOST_LOG_TRIVIAL(debug) << "Sending Trigger...";
         send(socket, event_string.str());
@@ -186,12 +186,12 @@ TEST_F(BufferDumpTester, read_event)
    
     std::this_thread::sleep_for(std::chrono::seconds(10));
     // Generate a trigger //
-    send_json(0.5, 0.7, 100.0, 869.375e6, 1);
+    send_json(0.5, 0.7, 100.0, 869.375e6, "FRB1");
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
     // Generate second trigger to make sure that it works the second time
-    send_json(1.0, 1.2, 100.0, 869.375e6, 2);
+    send_json(1.0, 1.2, 100.0, 869.375e6, "FRB2");
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
