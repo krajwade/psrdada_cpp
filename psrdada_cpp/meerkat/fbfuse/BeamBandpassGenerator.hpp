@@ -45,6 +45,7 @@ public:
     bool operator()(RawBytes&);
 
 private:
+    
     Handler& _handler;
     unsigned int _nbeams;
     unsigned int _nchans_per_subband;

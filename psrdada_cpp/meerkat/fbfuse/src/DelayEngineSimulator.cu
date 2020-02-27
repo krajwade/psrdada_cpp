@@ -74,7 +74,8 @@ DelayEngineSimulator::~DelayEngineSimulator()
         msg << "Failed to unmap shared memory "
         << _delay_buffer_shm << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        //throw std::runtime_error(msg.str());
+        BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 
     if (close(_shm_fd) == -1)
@@ -83,7 +84,8 @@ DelayEngineSimulator::~DelayEngineSimulator()
         msg << "Failed to close shared memory file descriptor "
         << _shm_fd << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        //throw std::runtime_error(msg.str());
+	BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 
     if (shm_unlink(_delay_buffer_shm.c_str()) == -1)
@@ -92,7 +94,8 @@ DelayEngineSimulator::~DelayEngineSimulator()
         msg << "Failed to unlink shared memory "
         << _delay_buffer_shm << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        //throw std::runtime_error(msg.str());
+        BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 
     if (sem_close(_sem_id) == -1)
@@ -101,7 +104,8 @@ DelayEngineSimulator::~DelayEngineSimulator()
         msg << "Failed to close semaphore "
         << _delay_buffer_sem << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        //throw std::runtime_error(msg.str());
+        BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 
     if (sem_close(_mutex_id) == -1)
@@ -110,7 +114,8 @@ DelayEngineSimulator::~DelayEngineSimulator()
         msg << "Failed to close mutex "
         << _delay_buffer_mutex << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        //throw std::runtime_error(msg.str());
+        BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 }
 

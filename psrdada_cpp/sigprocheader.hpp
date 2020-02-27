@@ -20,9 +20,33 @@ namespace psrdada_cpp
 {
 
     struct FilHead {
+
+        FilHead()
+        : rawfile("unset")
+        , source("unset")
+        , az(0.0)
+        , dec(0.0)
+        , fch1(0.0)
+        , foff(0.0)
+        , ra(0.0)
+        , rdm(0.0)
+        , tsamp(0.0)
+        , tstart(0.0)
+        , za(0.0)
+        , datatype(0)
+        , barycentric(0)
+        , ibeam(0)
+        , machineid(0)
+        , nbeams(0)
+        , nbits(0)
+        , nchans(0)
+        , nifs(0)
+        , telescopeid(0)
+        {}
+        ~FilHead(){};
+
         std::string rawfile;
         std::string source;
-
         double az;                      // azimuth angle in deg
         double dec;                     // source declination
         double fch1;                    // frequency of the top channel in MHz
@@ -34,7 +58,7 @@ namespace psrdada_cpp
         double za;                      // zenith angle in deg
 
         uint32_t datatype;                  // data type ID
-	uint32_t barycentric;                // barucentric flag
+        uint32_t barycentric;                // barucentric flag
         uint32_t ibeam;                      // beam number
         uint32_t machineid;
         uint32_t nbeams;
@@ -49,14 +73,13 @@ class SigprocHeader
 public:
     SigprocHeader();
     ~SigprocHeader();
-    void write_header(RawBytes& block,PsrDadaHeader ph);
-    void write_header(char*& ptr,FilHead& header);
-    void read_header(std::ifstream &infile, FilHead &header);
-    void read_header(std::stringstream &infile, FilHead &header);
-    std::size_t header_size() const;
+    std::size_t write_header(RawBytes& block, PsrDadaHeader ph);
+    std::size_t write_header(char*& ptr, FilHead& header); //should be const on FilHead
+    void read_header(std::istream &infile, FilHead &header);
+    void read_header(RawBytes& block, FilHead &header);
+    double hhmmss_to_double(std::string const& val);
 
 private:
-    std::size_t _header_size;
     /*
      * @brief write string to the header
      */

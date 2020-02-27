@@ -4,13 +4,17 @@ link_directories(${GTEST_LIBRARY_DIR})
 
 set(
     gtest_fbfuse_src
+    src/BufferDumpTester.cpp
     src/BeamBandpassGeneratorTester.cpp
     src/CoherentBeamformerTester.cu
     src/DelayManagerTester.cu
+    src/GainManagerTester.cu
     src/IncoherentBeamformerTester.cu
-    src/PipelineTester.cu
+    src/VoltageScalingTester.cu
     src/SplitTransposeTester.cu
+    src/ChannelScalingManagerTester.cu
     src/WeightsManagerTester.cu
+    src/PipelineTester.cu
     src/gtest_fbfuse.cu
 )
 cuda_add_executable(gtest_fbfuse ${gtest_fbfuse_src} )

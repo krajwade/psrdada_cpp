@@ -18,7 +18,7 @@ public:
 
     /**
      * @brief      A header manipulation method for PSRDADA and SIGPROC
-     *             
+     *
      *
      * @detail     A class that converts the PSRDADA header to a SIGPROC
      * 	           header before writing it out to the header block of the
@@ -40,7 +40,7 @@ public:
     /**
      * @brief      Set the SIGPROC header
      */
-    void header(SigprocHeader header);
+    void header(SigprocHeader const& header);
 
     /**
      * @brief      Get the SIGPROC header
@@ -52,7 +52,6 @@ private:
     std::uint32_t _beamnum;
     SigprocHeader _sh;
     char* _optr;
-
 };
 
 

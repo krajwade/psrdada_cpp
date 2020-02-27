@@ -38,7 +38,7 @@ namespace psrdada_cpp {
             throw std::runtime_error("Stream is already running");
         }
         _running = true;
-        
+
         // Get the header
         char* header_ptr = new char[4096];
         char* data_ptr = new char[_nbytes];
@@ -48,11 +48,12 @@ namespace psrdada_cpp {
         _handler.init(header_block);
 
         SigprocHeader sigheader;
-        FilHead filheader = {"","",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+        FilHead filheader;
         _filestream.seekg(0, _filestream.beg);
         sigheader.read_header(_filestream, filheader);
 
-        if ((_nbytes / filheader.nbits / 8) % filheader.nchans != 0) {
+        if ( _nbytes/(filheader.nbits/8) % filheader.nchans != 0) {
+            BOOST_LOG_TRIVIAL(info) << "nbits:" << filheader.nbits ;
             throw std::logic_error("Number of samples to stream to a block has to be a multiple of the number of channels");
         }
 
@@ -69,11 +70,11 @@ namespace psrdada_cpp {
         streamstart = std::chrono::steady_clock::now();
         while (!_stop) {
             BOOST_LOG_TRIVIAL(info) << "Reading data from the file";
-            BOOST_LOG_TRIVIAL(info) << "Streaming " << _nbytes << "B every " << blocktime << "s (" << static_cast<float>(_nbytes) / 1024.0f / 1024.0f << "MiBps"; 
+            BOOST_LOG_TRIVIAL(info) << "Streaming " << _nbytes << "B every " << blocktime << "s (" << static_cast<float>(_nbytes) / 1024.0f / 1024.0f << "MiBps";
             // Read data from file here
             RawBytes data_block(data_ptr, _nbytes, 0, false);
             while (!_stop)
-            { 
+            {
                 if ((static_cast<std::size_t>(_filestream.tellg()) + _nbytes) > filesize) {
                     BOOST_LOG_TRIVIAL(info) << "Will read beyond the end of file";
                     BOOST_LOG_TRIVIAL(info) << "Going to the start of the file again";
@@ -94,7 +95,7 @@ namespace psrdada_cpp {
                     _stop = true;
                     break;
                 }
-                std::this_thread::sleep_until(streamstart + std::chrono::milliseconds(static_cast<int>(streamcount * blocktime * 1000.0f)));
+                //std::this_thread::sleep_until(streamstart + std::chrono::milliseconds(static_cast<int>(streamcount * blocktime * 1000.0f)));
             }
             data_block.~RawBytes();
         }

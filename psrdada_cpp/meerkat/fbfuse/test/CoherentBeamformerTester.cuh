@@ -20,6 +20,9 @@ public:
     typedef thrust::host_vector<char> HostPowerVectorType;
     typedef CoherentBeamformer::WeightsVectorType DeviceWeightsVectorType;
     typedef thrust::host_vector<char2> HostWeightsVectorType;
+    typedef CoherentBeamformer::ScalingVectorType DeviceScalingVectorType;
+    typedef thrust::host_vector<float> HostScalingVectorType;
+
 
 protected:
     void SetUp() override;
@@ -41,12 +44,14 @@ protected:
         int nbeams,
         int nantennas,
         int npol,
-        float scale,
-        float offset);
+        float const* scales,
+        float const* offsets);
 
     void compare_against_host(
         DeviceVoltageVectorType const& ftpa_voltages_gpu,
         DeviceWeightsVectorType const& fbpa_weights_gpu,
+        DeviceScalingVectorType const& scales_gpu,
+        DeviceScalingVectorType const& offsets_gpu,
         DevicePowerVectorType& btf_powers_gpu,
         int nsamples);
 

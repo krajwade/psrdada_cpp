@@ -56,7 +56,7 @@ SimpleShmWriter::~SimpleShmWriter()
         msg << "Failed to unmap shared memory "
         << _shm_key << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+	BOOST_LOG_TRIVIAL(error) << msg.str();
     }
     BOOST_LOG_TRIVIAL(debug) << "Closing shared memory segment";
     if (close(_shm_fd) == -1)
@@ -65,7 +65,7 @@ SimpleShmWriter::~SimpleShmWriter()
         msg << "Failed to close shared memory file descriptor "
         << _shm_fd << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        BOOST_LOG_TRIVIAL(error) << msg.str();
     }
     BOOST_LOG_TRIVIAL(debug) << "Unlinking /dev/shm/" << _shm_key;
     if (shm_unlink(_shm_key.c_str()) == -1)
@@ -74,7 +74,7 @@ SimpleShmWriter::~SimpleShmWriter()
         msg << "Failed to unlink shared memory "
         << _shm_key << " with error: "
         << std::strerror(errno);
-        throw std::runtime_error(msg.str());
+        BOOST_LOG_TRIVIAL(error) << msg.str();
     }
 }
 
