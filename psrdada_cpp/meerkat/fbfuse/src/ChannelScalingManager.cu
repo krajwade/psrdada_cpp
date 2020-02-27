@@ -30,7 +30,7 @@ __global__ void calculate_std(
     {
         for (std::size_t jj = 0; jj < FBFUSE_TOTAL_NANTENNAS; ++jj)
         {
-            std::size_t idx = threadIdx.x + (FBFUSE_NSAMPLES_PER_HEAP)*freq_idx + ii * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS +     jj*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NCHANS;
+            std::size_t idx = ii * FBFUSE_NSAMPLES_PER_HEAP * FBFUSE_TOTAL_NANTENNAS * FBFUSE_NCHANS +  jj*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NCHANS + (FBFUSE_NSAMPLES_PER_HEAP)*freq_idx + threadIdx.x;
             char4 temp = taftp_voltages[idx];
             sum += (temp.x + temp.y + temp.w + temp.z);
             sum_sq += (temp.x*temp.x + temp.y*temp.y + temp.w*temp.w + temp.z*temp.z);
@@ -149,6 +149,7 @@ void ChannelScalingManager::channel_statistics(thrust::device_vector<char2> cons
                 taftp_voltages_ptr,
                 input,
                 nsamples);
+
         CUDA_ERROR_CHECK(cudaStreamSynchronize(_stream));
         BOOST_LOG_TRIVIAL(debug) << "Finished running input levels kernel";
         // Copy input levels to host and calculate statistics

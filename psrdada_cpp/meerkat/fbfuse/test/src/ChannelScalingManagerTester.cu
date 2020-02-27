@@ -126,10 +126,27 @@ TEST_F(ChannelScalingManagerTester, test_gaussian_noise)
     //simulate noise
     thrust::host_vector<char2> taftp_voltages_host(nsamples*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NCHANS*FBFUSE_NSAMPLES_PER_HEAP*FBFUSE_NPOL);
     thrust::host_vector<float> input_level(FBFUSE_NCHANS);
-    for (int ii = 0; ii < taftp_voltages_host.size(); ++ii)
+
+    for (std::size_t outerT = 0 ; outerT < nsamples; ++outerT )
     {
-        taftp_voltages_host[ii].x = static_cast<int8_t>(std::lround(normal_dist(generator)));
-        taftp_voltages_host[ii].y = static_cast<int8_t>(std::lround(normal_dist(generator)));
+        for (std::size_t A=0; A <  FBFUSE_TOTAL_NANTENNAS; ++A)
+        {
+            for(std::size_t F = 0 ; F < FBFUSE_NCHANS; ++F)
+            {
+                float factor = F * (0.8/FBFUSE_NCHANS) +  0.6;
+                float val = std::lround(factor*normal_dist(generator));
+
+                for(std::size_t ii=0; ii < FBFUSE_NPOL*FBFUSE_NSAMPLES_PER_HEAP; ++ii)
+                {
+                    std::size_t idx = outerT*FBFUSE_TOTAL_NANTENNAS*FBFUSE_NCHANS*FBFUSE_NPOL*FBFUSE_NSAMPLES_PER_HEAP +
+                                    A * FBFUSE_NCHANS*FBFUSE_NPOL*FBFUSE_NSAMPLES_PER_HEAP +
+                                    F * FBFUSE_NPOL*FBFUSE_NSAMPLES_PER_HEAP + ii;
+
+                    taftp_voltages_host[idx].x = static_cast<int8_t>(std::fmaxf(-127.0f,std::fminf(127.0f,val)));
+                    taftp_voltages_host[idx].y = static_cast<int8_t>(std::fmaxf(-127.0f,std::fminf(127.0f,val)));
+                }
+            }
+        }
     }
     // sync copy to the device
     thrust::device_vector<char2> taftp_voltages_gpu = taftp_voltages_host;

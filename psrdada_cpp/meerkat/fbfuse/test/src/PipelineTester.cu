@@ -296,15 +296,19 @@ TEST_F(PipelineTester, check_stats_test)
     char* input_data_buffer;
     CUDA_ERROR_CHECK(cudaMallocHost((void**)&input_data_buffer, taftp_block_bytes));
     RawBytes input_data_rb(input_data_buffer, taftp_block_bytes, taftp_block_bytes);
-
     float input_level = 32.0f;
     _config.output_level(32.0f);
     std::default_random_engine generator;
     std::normal_distribution<float> normal_dist(0.0, input_level);
-    for (std::size_t idx = 0; idx < taftp_block_bytes; ++idx)
+
+    for (std::size_t ii = 0; ii < taftp_block_bytes; ++ii)
     {
-        input_data_buffer[idx] = static_cast<int8_t>(std::lround(normal_dist(generator)));
+        std::size_t chan_idx = ((ii/1024/_config.nchans()) % _config.nchans());
+        float factor = chan_idx * (0.8/_config.nchans()) +  0.6;
+        float val = std::lround(factor*normal_dist(generator));
+        input_data_buffer[ii] = static_cast<int8_t>(std::fmaxf(-127.0f,std::fminf(127.0f,val)));
     }
+
     //Run the init
     pipeline.init(input_header_rb);
     //Loop over N data blocks and push them through the system
@@ -313,8 +317,8 @@ TEST_F(PipelineTester, check_stats_test)
         pipeline(input_data_rb);
         if (checker.valid())
         {
-            ASSERT_GT(5.0, checker.max_mean_diff());
-            ASSERT_GT(0.10, checker.max_std_diff());
+            EXPECT_GT(5.0, checker.max_mean_diff());
+            EXPECT_GT(0.12, checker.max_std_diff());
         }
     }
     cb_consumer.stop();
