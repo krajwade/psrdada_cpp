@@ -28,6 +28,42 @@ namespace
         std::strftime(buf, 42, "%Y_%m_%d_%X", now_tm);
         return buf;
     }
+
+    void send(boost::asio::local::stream_protocol::socket & socket, const std::string& message)
+    {
+        try
+        {
+            const std::string msg = message;
+            boost::asio::write( socket, boost::asio::buffer(message) );
+        }
+        catch (std::exception& e)
+        {
+            BOOST_LOG_TRIVIAL(error) << "Error in send";
+            BOOST_LOG_TRIVIAL(error) << e.what();
+        }
+    }
+
+    void send_json(std::string keyword, std::string message, std::unique_ptr<boost::asio::local::stream_protocol::socket>& socket)
+    {
+        try
+        {
+            //Make JSON message
+            boost::property_tree::ptree pt;
+            //Send the message
+            std::stringstream event_string;
+            pt.put<std::string>(keyword, message);
+            boost::property_tree::json_parser::write_json(event_string, pt);
+            BOOST_LOG_TRIVIAL(debug) << "Sending Response...";
+            send(*socket, event_string.str());
+        }
+        catch(std::exception& e)
+        {
+            BOOST_LOG_TRIVIAL(error) << "Error in send_json";
+            BOOST_LOG_TRIVIAL(error) << e.what();
+            exit(1);
+        }
+    }
+
 }
 
 
@@ -116,7 +152,6 @@ namespace fbfuse{
         {
             while (!_stop)
             {
-                BOOST_LOG_TRIVIAL(info) << "Looking for events...";
                 if (has_event())
                 {
                     BOOST_LOG_TRIVIAL(info) << "Event found!!";
@@ -134,7 +169,7 @@ namespace fbfuse{
                 }
                 while (_client->data_buffer_percent_full() > _max_fill_level)
                 {
-                    BOOST_LOG_TRIVIAL(debug) << "DADA buffer fill level = " << _client->data_buffer_percent_full() << "%";
+                    BOOST_LOG_TRIVIAL(debug) << "DADA buffer fill level = " << _client->data_buffer_percent_full();
                     skip_block();
                 }
 
@@ -188,28 +223,33 @@ namespace fbfuse{
             event_stream << event_string;
             BOOST_LOG_TRIVIAL(info) << "Getting Event information...";
             boost::property_tree::json_parser::read_json(event_stream, pt);
-            event.utc_start = pt.get<long double>("utc_start");
-            event.utc_end = pt.get<long double>("utc_end");
-            event.dm = pt.get<float>("dm");
-            event.reference_freq = pt.get<float>("reference_freq");
-            event.trigger_id = pt.get<std::string>("trigger_id");
-            BOOST_LOG_TRIVIAL(info) << "Event info:\n"
-                << "UTC_START: " << event.utc_start << "\n"
-                << "UTC_END: " << event.utc_end << "\n"
-                << "DM: " << event.dm << "\n"
-                << "REF FREQ: " << event.reference_freq << "\n"
-                << "TRIGGER_ID: " << event.trigger_id;
-            std::memset(_event_msg_buffer, 0, 4096);
-            _socket->close(ec);
-            if (ec)
+            try
             {
-                BOOST_LOG_TRIVIAL(error) << "Error on Shutdown " << ec.message();
+                event.utc_start = pt.get<long double>("utc_start");
+                event.utc_end = pt.get<long double>("utc_end");
+                event.dm = pt.get<float>("dm");
+                event.reference_freq = pt.get<float>("reference_freq");
+                event.trigger_id = pt.get<std::string>("trigger_id");
+                BOOST_LOG_TRIVIAL(info) << "Event info:\n"
+                    << "UTC_START: " << event.utc_start << "\n"
+                    << "UTC_END: " << event.utc_end << "\n"
+                    << "DM: " << event.dm << "\n"
+                    << "REF FREQ: " << event.reference_freq << "\n"
+                    << "TRIGGER_ID: " << event.trigger_id;
+                std::memset(_event_msg_buffer, 0, 4096);
+                send_json("Response", "Event captured successfully", _socket);
+                _socket->close(ec);
+            }
+            catch(std::exception& e)
+            {
+                BOOST_LOG_TRIVIAL(error) << "Error in capturing event: " << e.what(); 
             }
         }
 
         void BufferDump::capture(Event const& event)
         {
 
+            bool write_flag=false;
             std::size_t output_left_idx = 0, output_right_idx = 0;
             std::size_t block_left_idx = 0;
             // block_right_idx = 0;
@@ -229,7 +269,7 @@ namespace fbfuse{
             BOOST_LOG_TRIVIAL(debug) << "Channel bandwidth = " << chan_bw;
             std::size_t nelements = _subband_nchans * _nantennas * nsamps;
             BOOST_LOG_TRIVIAL(debug) << "Resizing output buffer to " << nelements << " elements";
-            _tmp_buffer.resize(nelements);
+            _tmp_buffer.resize(nelements,0xffffffff);
 
 
             std::size_t block_bytes = _client->data_buffer_size();
@@ -268,8 +308,10 @@ namespace fbfuse{
             std::size_t o_t = nsamps;
             std::size_t o_at = _nantennas * o_t;
 
+            std::size_t block_diff = start_block_idx - _current_block_idx;
             while (_current_block_idx <= end_block_idx)
             {
+                write_flag= true;
                 BOOST_LOG_TRIVIAL(debug) << "Extracting data from block " << _current_block_idx;
                 RawBytes& block = _client->data_stream().next();
                 std::size_t block_start = _current_block_idx * samples_per_block;
@@ -313,6 +355,7 @@ namespace fbfuse{
                         std::size_t offset_t = input_t % i_t;
                         std::size_t input_idx = group_t * i_aft + chan_idx * i_t + offset_t;
                         std::size_t output_idx = chan_idx * o_at + output_t;
+
                         for (std::size_t antenna_idx = 0; antenna_idx < _nantennas; ++antenna_idx)
                         {
                             _tmp_buffer[output_idx + antenna_idx * o_t] = block.ptr()[input_idx + antenna_idx * i_ft];
@@ -331,28 +374,33 @@ namespace fbfuse{
             parser.set<long double>("DM", event.dm);
             parser.set<long double>("FREQ", event. reference_freq);
             parser.set<std::string>("TRIGGER_ID", event.trigger_id);
+            parser.set<std::size_t>("BLOCK_DIFF", block_diff);
             // Open file for writing
             std::string filename = time_now() + ".dat";
             std::size_t sample_clock_start = start_sample * _total_nchans * 2;
             parser.set<std::size_t>("SAMPLE_CLOCK_START", sample_clock_start);
             BOOST_LOG_TRIVIAL(debug) << "Outputing data to a file";
             std::size_t nbytes = _tmp_buffer.size() * sizeof(char4);
-            std::ofstream writer;
-            writer.open(filename, std::ofstream::out | std::ofstream::binary);
-            if (writer.is_open())
+
+            if (write_flag)
             {
-                BOOST_LOG_TRIVIAL(info) << "Opened output file " << filename;
+                std::ofstream writer;
+                writer.open(filename, std::ofstream::out | std::ofstream::binary);
+                if (writer.is_open())
+                {
+                    BOOST_LOG_TRIVIAL(info) << "Opened output file " << filename;
+                }
+                else
+                {
+                    std::stringstream error_message;
+                    error_message << "Could not open file " << filename;
+                    BOOST_LOG_TRIVIAL(error) << error_message.str();
+                    throw std::runtime_error(error_message.str());
+                }
+                writer.write(_header_buffer, 4096);
+                writer.write((char*) _tmp_buffer.data(), nbytes);
+                writer.close();
             }
-            else
-            {
-                std::stringstream error_message;
-                error_message << "Could not open file " << filename;
-                BOOST_LOG_TRIVIAL(error) << error_message.str();
-                throw std::runtime_error(error_message.str());
-            }
-            writer.write(_header_buffer, 4096);
-            writer.write((char*) _tmp_buffer.data(), nbytes);
-            writer.close();
         }
 
 }

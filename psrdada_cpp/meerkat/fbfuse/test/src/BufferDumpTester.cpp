@@ -33,6 +33,19 @@ void send(boost::asio::local::stream_protocol::socket & socket, const std::strin
     }
 }
 
+void receive(boost::asio::local::stream_protocol::socket& socket)
+{
+    try
+    {
+        char* receiver = new char[4096];
+    	boost::asio::read( socket, boost::asio::buffer(receiver, 4096) );
+    }
+    catch (std::exception& e)
+    {
+	BOOST_LOG_TRIVIAL(error) << "Error in receive";
+	BOOST_LOG_TRIVIAL(error) << e.what();
+    }
+}
 void get_json(std::stringstream& ss, long double starttime, long double endtime, float dm, float ref_freq, std::string trig_id )
 {
     boost::property_tree::ptree pt;
@@ -45,12 +58,10 @@ void get_json(std::stringstream& ss, long double starttime, long double endtime,
     return;
 }
 
-void send_json(long double starttime, long double endtime, float dm, float ref_freq, std::string trig_id)
+void send_json(long double starttime, long double endtime, float dm, float ref_freq, std::string trig_id, boost::asio::local::stream_protocol::socket& socket)
 {
     try
     {
-        boost::asio::io_service io_service;
-        boost::asio::local::stream_protocol::socket socket(io_service);
         boost::asio::local::stream_protocol::endpoint ep("/tmp/buffer_dump_test.sock");
         socket.connect(ep);
         //Send the message
@@ -58,8 +69,6 @@ void send_json(long double starttime, long double endtime, float dm, float ref_f
         get_json(event_string, starttime, endtime, dm, ref_freq, trig_id);
         BOOST_LOG_TRIVIAL(debug) << "Sending Trigger...";
         send(socket, event_string.str());
-        socket.close();
-        io_service.stop();
     }
     catch(std::exception& e)
     {
@@ -92,6 +101,8 @@ void BufferDumpTester::TearDown()
 
 TEST_F(BufferDumpTester, do_nothing)
 {
+    boost::asio::io_service io_service;
+    boost::asio::local::stream_protocol::socket socket(io_service);
 
     std::size_t nchans = 64;
     std::size_t total_nchans = 4096;
@@ -143,6 +154,8 @@ TEST_F(BufferDumpTester, do_nothing)
 TEST_F(BufferDumpTester, read_event)
 {
    /* Send in an artificial trigger and check if the paramters are being read properly*/
+    boost::asio::io_service io_service;
+    boost::asio::local::stream_protocol::socket socket(io_service);
 
     std::size_t nchans = 64;
     std::size_t total_nchans = 4096;
@@ -183,19 +196,24 @@ TEST_F(BufferDumpTester, read_event)
         dumper.start();
     });
 
-   
     std::this_thread::sleep_for(std::chrono::seconds(10));
     // Generate a trigger //
-    send_json(0.5, 0.7, 100.0, 869.375e6, "FRB1");
+    ASSERT_NO_THROW(send_json(0.5, 0.7, 100.0, 869.375e6, "FRB1", socket));
+
+    socket.close();
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
     // Generate second trigger to make sure that it works the second time
-    send_json(1.0, 1.2, 100.0, 869.375e6, "FRB2");
+    ASSERT_NO_THROW(send_json(1.0, 1.2, 100.0, 869.375e6, "FRB2", socket));
 
     std::this_thread::sleep_for(std::chrono::seconds(10));
 
+    socket.close();
+
     dumper.stop();
+
+    io_service.stop();
 
     dumper_thread.join();
 }
