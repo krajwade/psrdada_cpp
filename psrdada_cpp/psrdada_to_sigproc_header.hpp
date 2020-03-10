@@ -13,7 +13,7 @@ class PsrDadaToSigprocHeader
 {
 
 public:
-    PsrDadaToSigprocHeader(std::uint32_t beamnum, HandlerType& handler);
+    PsrDadaToSigprocHeader(std::uint32_t beamnum, HandlerType& handler, std::size_t tscrunch, std::size_t fscrunch);
     ~PsrDadaToSigprocHeader();
 
     /**
@@ -26,6 +26,9 @@ public:
      * 	           stream pipeline can handle the header format.
      *
      * @param      block  A RawBytes object wrapping a DADA header buffer
+     * @param      beamnum: Beam number to process
+     * @param      tscrunch: tscrunch factor to change the meta data
+     * @param      fscrunch: fscrunch factor to change the meta data
      */
     void init(RawBytes& block);
 
@@ -50,6 +53,8 @@ public:
 private:
     HandlerType& _handler;
     std::uint32_t _beamnum;
+    std::size_t _tscrunch;
+    std::size_t _fscrunch;
     SigprocHeader _sh;
     char* _optr;
 };

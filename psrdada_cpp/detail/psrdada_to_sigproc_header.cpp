@@ -7,9 +7,11 @@
 namespace psrdada_cpp {
 
     template <class HandlerType>
-    PsrDadaToSigprocHeader<HandlerType>::PsrDadaToSigprocHeader(std::uint32_t beamnum, HandlerType& handler)
+    PsrDadaToSigprocHeader<HandlerType>::PsrDadaToSigprocHeader(std::uint32_t beamnum, HandlerType& handler, std::size_t tscrunch, std::size_t fscrunch)
     : _handler(handler),
-      _beamnum(beamnum)
+      _beamnum(beamnum),
+      _tscrunch(tscrunch),
+      _fscrunch(fscrunch)
     {
         _optr = new char[4096];
     }
@@ -24,7 +26,7 @@ namespace psrdada_cpp {
         SigprocHeader& h = header();
         PsrDadaHeader ph;
         RawBytes outblock(_optr,block.total_bytes(),0, false);
-        ph.from_bytes(block, _beamnum);
+        ph.from_bytes(block, _beamnum, _tscrunch, _fscrunch);
         h.write_header(outblock,ph);
         outblock.used_bytes(outblock.total_bytes());
         _handler.init(outblock);

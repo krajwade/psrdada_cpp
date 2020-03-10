@@ -47,7 +47,7 @@ public:
     /**
      * @brief: Get values from given key words
      */
-    void from_bytes(RawBytes& block, std::uint32_t beamnum);
+    void from_bytes(RawBytes& block, std::uint32_t beamnum, std::size_t& tscrunch, std::size_t& fscrunch);
 
     /**
      * @ All getters for psrdada header

@@ -14,6 +14,8 @@ namespace tuse {
 	, _nsamples(64)
 	, _nfreq(32)
 	, _ngroups(10)
+    , _tscrunch(1)
+    , _fscrunch(1)
 	{
 	}
 
@@ -46,7 +48,7 @@ namespace tuse {
 				{
                     char* o_data = new char[transpose_size];
 					RawBytes transpose(o_data,std::size_t(transpose_size),std::size_t(0));
-					transpose::do_transpose(transpose, block, _nchans, _nsamples, _nfreq, ii, _numbeams, _ngroups);
+					transpose::do_transpose(transpose, block, _nchans, _nsamples, _nfreq, ii, _numbeams, _ngroups, _tscrunch, _fscrunch);
 					transpose.used_bytes(transpose.total_bytes());
 					(*_handler[ii])(transpose);
                     delete [] o_data;
@@ -100,6 +102,18 @@ namespace tuse {
 	}
 
 	template <class HandlerType>
+	void TransposeToDada<HandlerType>::set_tscrunch(const std::size_t tscrunch)
+	{
+		_tscrunch = tscrunch;
+	}
+
+	template <class HandlerType>
+	void TransposeToDada<HandlerType>::set_fscrunch(const std::size_t fscrunch)
+	{
+		_fscrunch = fscrunch;
+	}
+
+	template <class HandlerType>
 	std::uint32_t TransposeToDada<HandlerType>::nchans()
 	{
 		return _nchans;
@@ -129,6 +143,17 @@ namespace tuse {
 		return _ngroups;
 	}
 
+	template <class HandlerType>
+	std::size_t TransposeToDada<HandlerType>::tscrunch()
+	{
+		return _tscrunch;
+	}
+
+	template <class HandlerType>
+	std::size_t TransposeToDada<HandlerType>::fscrunch()
+	{
+		return _fscrunch;
+	}
 } //tuse
 } //meerkat
 } //psrdada_cpp

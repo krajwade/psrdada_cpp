@@ -13,7 +13,7 @@ namespace transpose{
     /**
      * @brief the method that does the actual transpose
      */
-    void do_transpose(RawBytes& transposed_data, RawBytes& input_data, std::uint32_t nchans, std::uint32_t nsamples, std::uint32_t nfreq, std::uint32_t beamnum, std::uint32_t numbeams, std::uint32_t ngroups);
+    void do_transpose(RawBytes& transposed_data, RawBytes& input_data, std::uint32_t nchans, std::uint32_t nsamples, std::uint32_t nfreq, std::uint32_t beamnum, std::uint32_t numbeams, std::uint32_t ngroups, std::size_t tscrunch, std::size_t fscrunch);
 }
 
 template <class HandlerType>
@@ -77,6 +77,17 @@ public:
     void set_nfreq(const int _nfreq);
 
     /**
+     *@brief  getter of tscrunch
+     */
+    void set_tscrunch(const std::size_t tscrunch);
+
+    /**
+     *@brief  getter of tscrunch
+     */
+    void set_fscrunch(const std::size_t fscrunch);
+
+
+    /**
      * @brief getter for number of channels
      */
 
@@ -106,6 +117,16 @@ public:
 
     std::uint32_t nbeams();
 
+    /**
+     *@brief getter for tscrunch
+     */
+    std::size_t tscrunch();
+
+    /**
+     *@brief getter for tscrunch
+     */
+    std::size_t fscrunch();
+
 private:
     std::uint32_t _numbeams;
     std::vector<std::shared_ptr<HandlerType>> _handler;
@@ -113,6 +134,8 @@ private:
     std::uint32_t _nsamples;
     std::uint32_t _nfreq;
     std::uint32_t _ngroups;
+    std::size_t _tscrunch;
+    std::size_t _fscrunch;
 
 };
 

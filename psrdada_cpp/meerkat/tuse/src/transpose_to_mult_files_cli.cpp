@@ -31,6 +31,8 @@ int main(int argc, char** argv)
         std::uint32_t nbeams;
         std::uint32_t ngroups;
         std::size_t filesize;
+        std::size_t tscrunch;
+        std::size_t fscrunch;
 
         std::string filename;
         /*
@@ -59,6 +61,12 @@ int main(int argc, char** argv)
             "The number of frequency blocks in the stream")
         ("size,s", po::value<std::size_t>(&filesize)->required(),
             "Size of each filterbank file to be written");
+        ("tscrunch,tscr", po::value<std::size_t>(&tscrunch)->default_value(1),
+            "Time scrunching factor");
+        ("fscrunch,fscr", po::value<std::size_t>(&fscrunch)->default_value(1),
+            "Frequency scrunching factor");
+
+
 
         /* Catch Error and program description */
         po::variables_map vm;
@@ -104,7 +112,7 @@ int main(int argc, char** argv)
         }
         for (ii=0; ii < nbeams; ++ii)
         {
-            ptos.emplace_back(std::make_shared<PsrDadaToSigprocHeader<TestFileWriter>>(ii, *files[ii]));
+            ptos.emplace_back(std::make_shared<PsrDadaToSigprocHeader<TestFileWriter>>(ii, *files[ii],tscrunch, fscrunch));
         }
         meerkat::tuse::TransposeToDada<PsrDadaToSigprocHeader<TestFileWriter>> transpose(nbeams, ptos);
         transpose.set_nsamples(nsamples);
@@ -112,6 +120,8 @@ int main(int argc, char** argv)
         transpose.set_nfreq(nfreq);
         transpose.set_ngroups(ngroups);
         transpose.set_nbeams(nbeams);
+        transpose.set_tscrunch(tscrunch);
+        transpose.set_fscrunch(fscrunch);
 
 
         MultiLog log1("instream");

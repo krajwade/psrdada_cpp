@@ -17,7 +17,7 @@ namespace transpose{
      * of SPEAD2 packets. This can change in time
      */
     std::mutex MyMutex;
-    void do_transpose(RawBytes& transposed_data, RawBytes& input_data,std::uint32_t nchans, std::uint32_t nsamples, std::uint32_t nfreq, std::uint32_t beamnum, std::uint32_t nbeams, std::uint32_t ngroups)
+    void do_transpose(RawBytes& transposed_data, RawBytes& input_data,std::uint32_t nchans, std::uint32_t nsamples, std::uint32_t nfreq, std::uint32_t beamnum, std::uint32_t nbeams, std::uint32_t ngroups, std::size_t tscrunch, std::size_t fscrunch)
     {
         // make copies of arrays to be transposed
         if (input_data.total_bytes() % (nfreq * nchans * nsamples * nbeams) != 0)
@@ -50,9 +50,34 @@ namespace transpose{
             } // SAMPLES LOOP
         } // GROUP LOOP
 
+        std::size_t ii = 0;
+        auto add = [&](std::uint8_t x, std::uint8_t y)
+            {
+                std::size_t ind = 0;
+                for (std::uint32_t jj=0; jj < tscrunch; ++jj)
+                {
+                    std::uint8_t temp = tmpoutdata[ind*nchans + ii];
+                    y += temp;
+                    ++ind;
+                }
+                return x + y;
+            };
 
         // Convert to unsigned (add 128.0)
         std::transform(tmpoutdata.begin(), tmpoutdata.end(), tmpoutdata.begin(), std::bind2nd(std::plus<char>(),128));
+
+        // downsampling the data
+        if (fscrunch != 1 && tscrunch !=1)
+        {
+            for (ii = 0; ii < (nchans/fscrunch) * (ngroups*nsamples/tscrunch); ++ii)
+            {
+                tmpoutdata[ii] = (std::accumulate(tmpoutdata.begin() + (ii*fscrunch), tmpoutdata.begin() + ((ii+1)*fscrunch),0) +
+                        std::accumulate(tmpoutdata.begin(), tmpoutdata.begin(),0,add))/(tscrunch + fscrunch);
+            }
+            tmpoutdata.resize(nchans/fscrunch * (ngroups*nsamples/tscrunch));
+        }
+
+        //copy to output
         std::copy(tmpoutdata.begin(),tmpoutdata.end(), transposed_data.ptr());
     }
 } //transpose

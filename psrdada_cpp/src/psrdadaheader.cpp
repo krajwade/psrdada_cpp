@@ -28,7 +28,7 @@ PsrDadaHeader::~PsrDadaHeader()
 {
 }
 
-void PsrDadaHeader::from_bytes(RawBytes& block, std::uint32_t beamnum)
+void PsrDadaHeader::from_bytes(RawBytes& block, std::uint32_t beamnum, std::size_t& tscrunch, std::size_t& fscrunch)
 {
     std::vector<char> buf(DADA_HDR_SIZE);
     std::copy(block.ptr(),block.ptr()+block.total_bytes(),buf.begin());
@@ -36,9 +36,11 @@ void PsrDadaHeader::from_bytes(RawBytes& block, std::uint32_t beamnum)
     header.rdbuf()->pubsetbuf(&buf[0],DADA_HDR_SIZE);
     set_bw(atof(get_value("BW ",header).c_str()));
     set_freq(atof(get_value("FREQ ",header).c_str()));
-    set_nchans(atoi(get_value("NCHAN ",header).c_str()));
+    // chaning NCHANS according to fscrunch
+    set_nchans((atoi(get_value("NCHAN ",header).c_str()))/fscrunch);
     set_nbits(atoi(get_value("NBIT ",header).c_str()));
-    set_tsamp(atof(get_value("TSAMP ",header).c_str()));
+    // Change tsamp according to tscrunch
+    set_tsamp((atof(get_value("TSAMP ",header).c_str()))* (float)tscrunch);
     set_beam(atoi(get_value("IBEAM" + std::to_string(beamnum) + " ", header).c_str()));
     set_source(get_value("SOURCE" + std::to_string(beamnum) + " ",header));
     set_ra(get_value("RA" + std::to_string(beamnum) + " ",header));
