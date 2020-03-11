@@ -2,14 +2,13 @@
 #include "psrdada_cpp/multilog.hpp"
 #include "psrdada_cpp/cli_utils.hpp"
 #include "psrdada_cpp/common.hpp"
-#include "psrdada_cpp/dada_null_sink.hpp"
+#include "psrdada_cpp/simple_file_writer.hpp"
 #include "boost/program_options.hpp"
 #include <memory>
 #include <fstream>
 #include <dlfcn.h>
 #include <unistd.h>
 #include <csignal>
-#include <ctime>
 
 using namespace psrdada_cpp;
 
@@ -18,6 +17,7 @@ namespace
   const size_t ERROR_IN_COMMAND_LINE = 1;
   const size_t SUCCESS = 0;
   const size_t ERROR_UNHANDLED_EXCEPTION = 2;
+
 } // namespace
 
 
@@ -41,6 +41,7 @@ int main(int argc, char** argv)
         std::uint32_t nchannels;
         float centre_freq;
         float bandwidth;
+        std::string filesuffix;
         /**
          * Define and parse the program options
          */
@@ -70,6 +71,7 @@ int main(int argc, char** argv)
         ("bandwidth,b", po::value<float>(&bandwidth)->required(),
             "Bandwidth of one subband");
 
+
         /* Catch Error and program description */
         po::variables_map vm;
         try
@@ -96,9 +98,8 @@ int main(int argc, char** argv)
         std::signal(SIGINT,detail::SignalHandler);
 
        /* Setting up the pipeline based on the type of sink*/
-        NullSink sink;
         MultiLog log1("instream");
-        meerkat::fbfuse::BufferDump<NullSink> dumper(input_key, log1,sink, socket_name, max_fill_level, nantennas, subband_nchannels, nchannels, centre_freq, bandwidth);
+        meerkat::fbfuse::BufferDump dumper(input_key, log1, socket_name, max_fill_level, nantennas, subband_nchannels, nchannels, centre_freq, bandwidth);
         dumper.start();
 
       /* End Application Code */
