@@ -95,6 +95,11 @@ int main(int argc, char** argv)
             throw std::runtime_error(std::string("Incorrect size of file. File size has to be greater than size of data per beam in one DADA block"));
         }
 
+        /* Check whether the scrunching factors are a multiple */
+        if ( nchans % fscrunch !=0 || nsamples*ngroups % tscrunch != 0 )
+        {
+            throw std::runtime_error(std::string("Incorrect tscrunch/ fscrunch factors. They have to be a multiple."));
+        }
        /* Application Code */
 
         MultiLog log("outstream");

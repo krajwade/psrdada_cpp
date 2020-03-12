@@ -72,7 +72,7 @@ namespace transpose{
             for (ii = 0; ii < (nchans/fscrunch) * (ngroups*nsamples/tscrunch); ++ii)
             {
                 tmpoutdata[ii] = (std::accumulate(tmpoutdata.begin() + (ii*fscrunch), tmpoutdata.begin() + ((ii+1)*fscrunch),0) +
-                        std::accumulate(tmpoutdata.begin(), tmpoutdata.begin(),0,add))/(tscrunch + fscrunch);
+                        std::accumulate(tmpoutdata.begin() + ii, tmpoutdata.begin() + ii + 1,0,add))/(tscrunch + fscrunch);
             }
             tmpoutdata.resize(nchans/fscrunch * (ngroups*nsamples/tscrunch));
         }

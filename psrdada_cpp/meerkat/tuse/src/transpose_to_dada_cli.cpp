@@ -90,7 +90,11 @@ int main(int argc, char** argv)
             return ERROR_IN_COMMAND_LINE;
         }
 
-        /* Check size of the DADA buffers */
+        /* Check whether the scrunching factors are a multiple */
+        if ( nchans % fscrunch !=0 || nsamples*ngroups % tscrunch != 0 )
+        {
+            throw std::runtime_error(std::string("Incorrect tscrunch/ fscrunch factors. They have to be a multiple."));
+        }
 
         /* Open file to parse all values to the key_t object*/
         fkeys.open(filename,std::fstream::in);
