@@ -40,33 +40,44 @@ namespace tuse {
 		std::uint32_t ii;
 		std::vector<std::thread> threads;
 		auto transpose_size = _nchans * _nsamples * _nfreq * _ngroups;
-		try
-		{
-			for(ii=0; ii< _numbeams; ii++)
-			{
-				threads.emplace_back(std::thread([&, ii]()
-				{
-                    char* o_data = new char[transpose_size];
-					RawBytes transpose(o_data,std::size_t(transpose_size),std::size_t(0));
-					transpose::do_transpose(transpose, block, _nchans, _nsamples, _nfreq, ii, _numbeams, _ngroups, _tscrunch, _fscrunch);
-					transpose.used_bytes(transpose.total_bytes());
-					(*_handler[ii])(transpose);
+        _transpose_buffers.resize(_numbeams);
+        for (auto& buffer: _transpose_buffers)
+        {
+            buffer.resize(transpose_size);
+        }
+
+        bool thread_error = false;
+
+        for(ii=0; ii< _numbeams; ii++)
+        {
+            threads.emplace_back(std::thread([&, ii]()
+            {
+                try
+                {
+                    char* o_data = _transpose_buffers[ii].data();
+                    RawBytes transpose(o_data,std::size_t(transpose_size),std::size_t(0));
+                    transpose::do_transpose(transpose, block, _nchans, _nsamples, _nfreq, ii, _numbeams, _ngroups, _tscrunch, _fscrunch);
+                    transpose.used_bytes(transpose.total_bytes());
+                    (*_handler[ii])(transpose);
                     delete [] o_data;
-				}
-				));
+                }
+                catch(...)
+                {
+                    BOOST_LOG_TRIVIAL(error) << "Error in transpose";
+                    thread_error = true;
+                }
+            }
+            ));
+        }
 
-			}
+        for (ii=0; ii< _numbeams; ii++)
+        {
+            threads[ii].join();
+        }
 
-			for (ii=0; ii< _numbeams; ii++)
-			{
-				threads[ii].join();
-			}
-
-		}
-
-		catch(...)
+		if (thread_error)
 		{
-			BOOST_LOG_TRIVIAL(debug) << "Unknown exception caught";
+			throw std::runtime_error("Unknonw error in transpose thread");
 		}
 		return false;
 	}

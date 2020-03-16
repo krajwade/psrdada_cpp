@@ -130,6 +130,7 @@ public:
 private:
     std::uint32_t _numbeams;
     std::vector<std::shared_ptr<HandlerType>> _handler;
+    std::vector<std::vector<char>> _transpose_buffers;
     std::uint32_t _nchans;
     std::uint32_t _nsamples;
     std::uint32_t _nfreq;
