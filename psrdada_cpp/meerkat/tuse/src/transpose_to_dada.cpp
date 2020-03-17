@@ -69,12 +69,12 @@ namespace transpose{
         // downsampling the data
         if (fscrunch != 1 && tscrunch !=1)
         {
-            for (ii = 0; ii < (nchans/fscrunch) * (ngroups*nsamples/tscrunch); ++ii)
+            for (ii = 0; ii < (nchans*nfreq/fscrunch) * (ngroups*nsamples/tscrunch); ++ii)
             {
                 tmpoutdata[ii] = (std::accumulate(tmpoutdata.begin() + (ii*fscrunch), tmpoutdata.begin() + ((ii+1)*fscrunch),0) +
                         std::accumulate(tmpoutdata.begin() + ii, tmpoutdata.begin() + ii + 1,0,add))/(tscrunch + fscrunch);
             }
-            tmpoutdata.resize(nchans/fscrunch * (ngroups*nsamples/tscrunch));
+            tmpoutdata.resize(nchans * nfreq/fscrunch * (ngroups*nsamples/tscrunch));
         }
 
         //copy to output
