@@ -60,10 +60,10 @@ int main(int argc, char** argv)
         ("nfreq,f", po::value<std::uint32_t>(&nfreq)->required(),
             "The number of frequency blocks in the stream")
         ("size,s", po::value<std::size_t>(&filesize)->required(),
-            "Size of each filterbank file to be written");
-        ("tscrunch,tscr", po::value<std::size_t>(&tscrunch)->default_value(1),
-            "Time scrunching factor");
-        ("fscrunch,fscr", po::value<std::size_t>(&fscrunch)->default_value(1),
+            "Size of each filterbank file to be written")
+        ("tscrunch,d", po::value<std::size_t>(&tscrunch)->default_value(1),
+            "Time scrunching factor")
+        ("fscrunch,n", po::value<std::size_t>(&fscrunch)->default_value(1),
             "Frequency scrunching factor");
 
 

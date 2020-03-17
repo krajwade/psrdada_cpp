@@ -63,9 +63,9 @@ int main(int argc, char** argv)
             "The number of time samples per heap in the stream")
         ("nfreq,f", po::value<std::uint32_t>(&nfreq)->required(),
             "The number of frequency subbands in the stream")
-        ("tscrunch,tscr", po::value<std::size_t>(&tscrunch)->default_value(1),
+        ("tscrunch,t", po::value<std::size_t>(&tscrunch)->default_value(1),
             "Time scrunching factor to be applied")
-        ("fscrunch,fscr", po::value<std::size_t>(&fscrunch)->default_value(1),
+        ("fscrunch,n", po::value<std::size_t>(&fscrunch)->default_value(1),
             "Frequency Scrunching factor");
 
 
