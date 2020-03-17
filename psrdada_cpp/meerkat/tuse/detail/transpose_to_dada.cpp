@@ -39,7 +39,7 @@ namespace tuse {
 	{
 		std::uint32_t ii;
 		std::vector<std::thread> threads;
-		auto transpose_size = _nchans * _nsamples * _nfreq * _ngroups;
+		auto transpose_size = (_nchans *_nfreq/ _fscrunch) * (_nsamples * _ngroups/_tscrunch);
         _transpose_buffers.resize(_numbeams);
         for (auto& buffer: _transpose_buffers)
         {
@@ -59,7 +59,6 @@ namespace tuse {
                     transpose::do_transpose(transpose, block, _nchans, _nsamples, _nfreq, ii, _numbeams, _ngroups, _tscrunch, _fscrunch);
                     transpose.used_bytes(transpose.total_bytes());
                     (*_handler[ii])(transpose);
-                    delete [] o_data;
                 }
                 catch(...)
                 {
