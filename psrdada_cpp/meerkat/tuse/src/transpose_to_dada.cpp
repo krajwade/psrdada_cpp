@@ -67,7 +67,7 @@ namespace transpose{
         std::transform(tmpoutdata.begin(), tmpoutdata.end(), tmpoutdata.begin(), std::bind2nd(std::plus<char>(),128));
 
         // downsampling the data
-        if (fscrunch != 1 && tscrunch !=1)
+        if (fscrunch != 1 || tscrunch !=1)
         {
             for (ii = 0; ii < (nchans*nfreq/fscrunch) * (ngroups*nsamples/tscrunch); ++ii)
             {
