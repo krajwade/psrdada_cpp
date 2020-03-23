@@ -51,16 +51,19 @@ namespace transpose{
         } // GROUP LOOP
 
         std::size_t ii = 0;
-        auto add = [&](std::uint8_t x, std::uint8_t y)
+        auto add_t = [&](std::uint8_t x, std::uint8_t y)
             {
-                std::size_t ind = 0;
-                for (std::uint32_t jj=0; jj < tscrunch; ++jj)
+                std::uint8_t temp=0;
+                for (std::uint32_t jj=1; jj < tscrunch; ++jj)
                 {
-                    std::uint8_t temp = tmpoutdata[ind*nchans + ii];
-                    y += temp;
-                    ++ind;
+                    temp += (y + tmpoutdata[jj*nchans + ii])/(tscrunch+fscrunch);
                 }
-                return x + y;
+                return x + temp;
+            };
+
+        auto add_f = [&](std::uint8_t x, std::uint8_t y)
+            {
+                return x + (y/(tscrunch + fscrunch));
             };
 
         // Convert to unsigned (add 128.0)
@@ -71,8 +74,8 @@ namespace transpose{
         {
             for (ii = 0; ii < (nchans*nfreq/fscrunch) * (ngroups*nsamples/tscrunch); ++ii)
             {
-                tmpoutdata[ii] = (std::accumulate(tmpoutdata.begin() + (ii*fscrunch), tmpoutdata.begin() + ((ii+1)*fscrunch),0) +
-                        std::accumulate(tmpoutdata.begin() + ii, tmpoutdata.begin() + ii + 1,0,add))/(tscrunch + fscrunch);
+                tmpoutdata[ii] = (std::accumulate(tmpoutdata.begin() + (ii*fscrunch), tmpoutdata.begin() + ((ii+1)*fscrunch),0,add_f) +
+                        std::accumulate(tmpoutdata.begin() + ii, tmpoutdata.begin() + ii + 1,0,add_t));
             }
             tmpoutdata.resize(nchans * nfreq/fscrunch * (ngroups*nsamples/tscrunch));
         }
