@@ -97,6 +97,7 @@ namespace psrdada_cpp {
             block.used_bytes(block.total_bytes());
             _wsize += block.total_bytes() - left_size;
         }
+        BOOST_LOG_TRIVIAL(info) << "Write successful";
         return false;
     }
 

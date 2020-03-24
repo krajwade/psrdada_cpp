@@ -50,6 +50,7 @@ namespace psrdada_cpp {
                 break;
             }
             handler_stop_request = _handler(data_stream.next());
+            BOOST_LOG_TRIVIAL(info) << "DADA input stream handler returned";
             data_stream.release();
         }
         _running = false;
