@@ -53,17 +53,17 @@ namespace transpose{
         std::size_t ii = 0;
         auto add_t = [&](std::uint8_t x, std::uint8_t y)
             {
-                std::uint8_t temp=0;
+                float temp=0.0;
                 for (std::uint32_t jj=1; jj < tscrunch; ++jj)
                 {
-                    temp += (y + tmpoutdata[jj*nchans + ii])/(tscrunch+fscrunch);
+                    temp += ((float)y + (float)tmpoutdata[jj*nchans + ii])/((float)(tscrunch+fscrunch));
                 }
-                return x + temp;
+                return x + (uint8_t)temp;
             };
 
         auto add_f = [&](std::uint8_t x, std::uint8_t y)
             {
-                return x + (y/(tscrunch + fscrunch));
+                return x + (uint8_t) ((float)y/(float)(tscrunch + fscrunch));
             };
 
         // Convert to unsigned (add 128.0)
@@ -72,7 +72,7 @@ namespace transpose{
         // downsampling the data
         if (fscrunch != 1 || tscrunch !=1)
         {
-            for (ii = 0; ii < (nchans*nfreq/fscrunch) * (ngroups*nsamples/tscrunch); ++ii)
+            for (ii = 0; ii < (nchans*nfreq/fscrunch) * (ngroups*nsamples/tscrunch); ii += tscrunch*(nchans*nfreq))
             {
                 tmpoutdata[ii] = (std::accumulate(tmpoutdata.begin() + (ii*fscrunch), tmpoutdata.begin() + ((ii+1)*fscrunch),0,add_f) +
                         std::accumulate(tmpoutdata.begin() + ii, tmpoutdata.begin() + ii + 1,0,add_t));
