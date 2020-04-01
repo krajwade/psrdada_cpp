@@ -56,29 +56,88 @@ namespace transpose{
                 float temp=0.0;
                 for (std::uint32_t jj=1; jj < tscrunch; ++jj)
                 {
-                    temp += ((float)y + (float)tmpoutdata[jj*nchans + ii])/((float)(tscrunch+fscrunch));
+                    temp += ((float)y + (float)tmpoutdata[jj*nchans + ii])/((float)(tscrunch*fscrunch));
                 }
                 return x + (uint8_t)temp;
             };
 
         auto add_f = [&](std::uint8_t x, std::uint8_t y)
             {
-                return x + (uint8_t) ((float)y/(float)(tscrunch + fscrunch));
+                return x + (uint8_t) ((float)y/(float)(tscrunch*fscrunch));
             };
 
         // Convert to unsigned (add 128.0)
         std::transform(tmpoutdata.begin(), tmpoutdata.end(), tmpoutdata.begin(), std::bind2nd(std::plus<char>(),128));
 
+        std::size_t factor = tscrunch*fscrunch;
+
         // downsampling the data
+        std:size_t freqindex = 0, timeindex=0, stepindex=0, offset=0;
+        std::uint8_t sum = 0;
+        //  Two methods to do this: 1) Nested for loop and 2) separate for loops
+        //  Method 1
         if (fscrunch != 1 || tscrunch !=1)
         {
-            for (ii = 0; ii < (nchans*nfreq/fscrunch) * (ngroups*nsamples/tscrunch); ii += tscrunch*(nchans*nfreq))
+            for (ii = 0; ii < tocopy/factor; ++ii)
             {
-                tmpoutdata[ii] = (std::accumulate(tmpoutdata.begin() + (ii*fscrunch), tmpoutdata.begin() + ((ii+1)*fscrunch),0,add_f) +
-                        std::accumulate(tmpoutdata.begin() + ii, tmpoutdata.begin() + ii + 1,0,add_t));
+                sum  = 0;
+
+                if (ii*fscrunch < skipallchans*stepindex)
+                {
+                    for (std::size_t jj = 0; jj < tscrunch; ++jj)
+                    {
+                        freqindex = 0;
+                        while (freqindex < fscrunch)
+                        {
+                            sum += (uint8_t)( (float)tmpoutdata[ (timeindex*fscrunch + offset ) + jj*skipallchans + freqindex]/(float)(factor));
+                            ++freqindex;
+                            //(std::accumulate(tmpoutdata.begin() + (ii*fscrunch), tmpoutdata.begin() + ((ii+1)*fscrunch),0,add_f) +
+                            //std::accumulate(tmpoutdata.begin() + ii, tmpoutdata.begin() + ii + 1,0,add_t));
+                        }
+                    }
+                    ++timeindex;
+                }
+                else
+                {
+                    ++stepindex;
+                    timeindex=0;
+                    offset += tscrunch*skipallchans;
+                    --ii;
+                }
+                tmpoutdata[ii] = sum;
             }
-            tmpoutdata.resize(nchans * nfreq/fscrunch * (ngroups*nsamples/tscrunch));
+            tmpoutdata.resize(skipallchans*ngroups*nsamples/factor);
         }
+
+        //Method 2
+        /*if (fscrunch != 1)
+        {
+            for (std::size_t ii = 0; ii < tocopy/fscrunch; ++ii)
+            {
+                tmpoutdata[ii] = std::accumulate(tmpoutdata.begin() + ii*fscrunch, tmpoutdata.begin() + (ii + 1)* fscrunch, 0, add_f);
+            }
+        }
+
+        if (tscrunch !=1)
+        {
+            for (std::size_t ii = 0; ii < tocopy/factor; ++ii)
+            {
+                if (ii < skipallchans*stepindex/fscrunch)
+                {
+                    for (std::size_t jj = 0; jj < tscrunch; ++jj)
+                    {
+                         tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (ii + offset ) + jj*skipallchans/fscrunch]/(float)(factor));
+                    }
+                }
+                else
+                {
+                    ++stepindex;
+                    offset += tscrunch*skipallchans/fscrunch;
+                    --ii;
+                }
+            }
+        }*/
+
 
         //copy to output
         std::copy(tmpoutdata.begin(),tmpoutdata.end(), transposed_data.ptr());
