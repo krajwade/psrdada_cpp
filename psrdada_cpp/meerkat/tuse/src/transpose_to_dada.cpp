@@ -128,14 +128,14 @@ namespace transpose{
                 {
                     for (std::size_t jj = 1; jj < tscrunch; ++jj)
                     {
-                         tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (timeindex + offset ) + jj*new_nchans]/(float)(factor));
+                         tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (freqindex + offset ) + jj*new_nchans]/(float)(factor));
                     }
-                    ++timeindex;
+                    ++freqindex;
                 }
                 else
                 {
                     ++stepindex;
-                    timeindex = 0;
+                    freqindex = 0;
                     offset += tscrunch*new_nchans;
                     --ii;
                 }
