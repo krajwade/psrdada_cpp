@@ -40,10 +40,10 @@ namespace tuse {
 		std::uint32_t ii;
 		std::vector<std::thread> threads;
 		auto transpose_size = (_nchans *_nfreq/ _fscrunch) * (_nsamples * _ngroups/_tscrunch);
-        _transpose_buffers.resize(_numbeams);
+        _transpose_buffers.reserve(_numbeams);
         for (auto& buffer: _transpose_buffers)
         {
-            buffer.resize(transpose_size);
+            buffer.reserve(transpose_size);
         }
 
         bool thread_error = false;

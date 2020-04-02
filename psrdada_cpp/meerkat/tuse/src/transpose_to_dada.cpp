@@ -74,11 +74,12 @@ namespace transpose{
         // downsampling the data
         std:size_t freqindex = 0, timeindex=0, stepindex=0, offset=0;
         std::uint8_t sum = 0;
+        std::size_t new_size = tocopy/factor;
         //  Two methods to do this: 1) Nested for loop and 2) separate for loops
         //  Method 1
         if (fscrunch != 1 || tscrunch !=1)
         {
-            for (ii = 0; ii < tocopy/factor; ++ii)
+            for (ii = 0; ii < new_size; ++ii)
             {
                 sum  = 0;
 
@@ -106,11 +107,12 @@ namespace transpose{
                 }
                 tmpoutdata[ii] = sum;
             }
-            tmpoutdata.resize(skipallchans*ngroups*nsamples/factor);
+            //tmpoutdata.resize(skipallchans*ngroups*nsamples/factor);
         }
 
         //Method 2
-        /*if (fscrunch != 1)
+        /*std::size_t new_nchans = skipallchans/fscrunch;
+        if (fscrunch != 1)
         {
             for (std::size_t ii = 0; ii < tocopy/fscrunch; ++ii)
             {
@@ -126,13 +128,13 @@ namespace transpose{
                 {
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                         tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (ii + offset ) + jj*skipallchans/fscrunch]/(float)(factor));
+                         tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (ii + offset ) + jj*new_nchans]/(float)(factor));
                     }
                 }
                 else
                 {
                     ++stepindex;
-                    offset += tscrunch*skipallchans/fscrunch;
+                    offset += tscrunch*new_nchans;
                     --ii;
                 }
             }
@@ -140,7 +142,7 @@ namespace transpose{
 
 
         //copy to output
-        std::copy(tmpoutdata.begin(),tmpoutdata.end(), transposed_data.ptr());
+        std::copy(tmpoutdata.begin(),tmpoutdata.begin() + new_size, transposed_data.ptr());
     }
 } //transpose
 } //tuse
