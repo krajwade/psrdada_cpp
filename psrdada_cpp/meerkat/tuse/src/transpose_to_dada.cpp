@@ -114,7 +114,7 @@ namespace transpose{
         std::size_t new_nchans = skipallchans/fscrunch;
         if (fscrunch != 1)
         {
-            for (std::size_t ii = 0; ii < tocopy/fscrunch; ++ii)
+            for (ii = 0; ii < tocopy/fscrunch; ++ii)
             {
                 tmpoutdata[ii] = std::accumulate(tmpoutdata.begin() + ii*fscrunch, tmpoutdata.begin() + (ii + 1)* fscrunch, 0, add_f);
             }
@@ -122,11 +122,11 @@ namespace transpose{
 
         if (tscrunch !=1)
         {
-            for (std::size_t ii = 0; ii < tocopy/factor; ++ii)
+            for (ii = 0; ii < tocopy/factor; ++ii)
             {
                 if (ii < new_nchans*stepindex)
                 {
-                    for (std::size_t jj = 0; jj < tscrunch; ++jj)
+                    for (std::size_t jj = 1; jj < tscrunch; ++jj)
                     {
                          tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (timeindex + offset ) + jj*new_nchans]/(float)(factor));
                     }
