@@ -77,7 +77,7 @@ namespace transpose{
         std::size_t new_size = tocopy/factor;
         //  Two methods to do this: 1) Nested for loop and 2) separate for loops
         //  Method 1
-        if (fscrunch != 1 || tscrunch !=1)
+        /*if (fscrunch != 1 || tscrunch !=1)
         {
             for (ii = 0; ii < new_size; ++ii)
             {
@@ -108,10 +108,10 @@ namespace transpose{
                 tmpoutdata[ii] = sum;
             }
             //tmpoutdata.resize(skipallchans*ngroups*nsamples/factor);
-        }
+        }*/
 
         //Method 2
-        /*std::size_t new_nchans = skipallchans/fscrunch;
+        std::size_t new_nchans = skipallchans/fscrunch;
         if (fscrunch != 1)
         {
             for (std::size_t ii = 0; ii < tocopy/fscrunch; ++ii)
@@ -124,21 +124,23 @@ namespace transpose{
         {
             for (std::size_t ii = 0; ii < tocopy/factor; ++ii)
             {
-                if (ii < skipallchans*stepindex/fscrunch)
+                if (ii < new_nchans*stepindex)
                 {
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                         tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (ii + offset ) + jj*new_nchans]/(float)(factor));
+                         tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (timeindex + offset ) + jj*new_nchans]/(float)(factor));
                     }
+                    ++timeindex;
                 }
                 else
                 {
                     ++stepindex;
+                    timeindex = 0;
                     offset += tscrunch*new_nchans;
                     --ii;
                 }
             }
-        }*/
+        }
 
 
         //copy to output
