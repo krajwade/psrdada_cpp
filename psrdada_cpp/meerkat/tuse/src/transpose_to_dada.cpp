@@ -50,17 +50,6 @@ namespace transpose{
             } // SAMPLES LOOP
         } // GROUP LOOP
 
-        std::size_t ii = 0;
-        auto add_t = [&](std::uint8_t x, std::uint8_t y)
-            {
-                float temp=0.0;
-                for (std::uint32_t jj=1; jj < tscrunch; ++jj)
-                {
-                    temp += ((float)y + (float)tmpoutdata[jj*nchans + ii])/((float)(tscrunch*fscrunch));
-                }
-                return x + (uint8_t)temp;
-            };
-
         auto add_f = [&](std::uint8_t x, std::uint8_t y)
             {
                 return x + (uint8_t) ((float)y/(float)(tscrunch*fscrunch));
@@ -72,14 +61,15 @@ namespace transpose{
         std::size_t factor = tscrunch*fscrunch;
 
         // downsampling the data
-        std:size_t freqindex = 0, stepindex=0, offset=0;
+        std:size_t freqindex = 0, stepindex=1, offset=0;
         std::size_t new_size = tocopy/factor;
 
         //Method 2
         std::size_t new_nchans = skipallchans/fscrunch;
+
         if (fscrunch != 1)
         {
-            for (ii = 0; ii < tocopy/fscrunch; ++ii)
+            for (std::size_t ii = 0; ii < tocopy/fscrunch; ++ii)
             {
                 tmpoutdata[ii] = std::accumulate(tmpoutdata.begin() + ii*fscrunch, tmpoutdata.begin() + (ii + 1)* fscrunch, 0, add_f);
             }
@@ -87,7 +77,7 @@ namespace transpose{
 
         if (tscrunch !=1)
         {
-            for (ii = 0; ii < tocopy/factor; ++ii)
+            for (std::size_t ii = 0; ii < new_size; ++ii)
             {
                 if (ii < new_nchans*stepindex)
                 {
