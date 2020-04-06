@@ -67,6 +67,8 @@ namespace transpose{
         //Method 2
         std::size_t new_nchans = skipallchans/fscrunch;
 
+        std::vector<char>tmpoutdata_scrunch(new_size,0);
+
         if (fscrunch != 1)
         {
             for (std::size_t ii = 0; ii < tocopy/fscrunch; ++ii)
@@ -81,9 +83,9 @@ namespace transpose{
             {
                 if (ii < new_nchans*stepindex)
                 {
-                    for (std::size_t jj = 1; jj < tscrunch; ++jj)
+                    for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                         tmpoutdata[ii] += (uint8_t)( (float)tmpoutdata[ (freqindex + offset ) + jj*new_nchans]/(float)(factor));
+                         tmpoutdata_scrunch[ii] += (uint8_t)( (float)tmpoutdata[ (freqindex + offset ) + jj*new_nchans]/(float)(factor));
                     }
                     ++freqindex;
                 }
@@ -95,11 +97,13 @@ namespace transpose{
                     --ii;
                 }
             }
+            std::copy(tmpoutdata_scrunch.begin(),tmpoutdata_scrunch.end(), transposed_data.ptr());
         }
-
-
+        else
+        {
+            std::copy(tmpoutdata.begin(),tmpoutdata.begin() + new_size, transposed_data.ptr());
+        }
         //copy to output
-        std::copy(tmpoutdata.begin(),tmpoutdata.begin() + new_size, transposed_data.ptr());
     }
 } //transpose
 } //tuse
