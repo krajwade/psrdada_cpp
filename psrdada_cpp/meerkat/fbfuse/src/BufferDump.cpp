@@ -40,6 +40,7 @@ namespace
         {
             BOOST_LOG_TRIVIAL(error) << "Error in send";
             BOOST_LOG_TRIVIAL(error) << e.what();
+            throw;
         }
     }
 
@@ -60,7 +61,7 @@ namespace
         {
             BOOST_LOG_TRIVIAL(error) << "Error in send_json";
             BOOST_LOG_TRIVIAL(error) << e.what();
-            exit(1);
+            throw;
         }
     }
 
