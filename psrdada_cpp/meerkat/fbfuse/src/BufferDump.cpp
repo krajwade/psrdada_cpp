@@ -1,11 +1,13 @@
 #include "psrdada_cpp/meerkat/fbfuse/BufferDump.hpp"
 #include "psrdada_cpp/Header.hpp"
 #include "psrdada_cpp/raw_bytes.hpp"
+#include "psrdada_cpp/file_output_stream.hpp"
 #include <boost/asio.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/optional.hpp>
 #include <cstdio>
+#include <ctime>
 #include <cstdlib>
 #include <cmath>
 #include <chrono>
@@ -17,6 +19,52 @@ namespace
     {
         return (4.15 * 0.001 * dm * (std::pow(1/(f2/1e9),2.0) - std::pow(1/(f1/1e9), 2.0)))/tsamp;
     }
+
+    std::string time_now()
+    {
+        std::time_t now= std::time(0);
+        std::tm* now_tm= std::gmtime(&now);
+        char buf[42];
+        std::strftime(buf, 42, "%Y_%m_%d_%X", now_tm);
+        return buf;
+    }
+
+    void send(boost::asio::local::stream_protocol::socket & socket, const std::string& message)
+    {
+        try
+        {
+            const std::string msg = message;
+            boost::asio::write( socket, boost::asio::buffer(message) );
+        }
+        catch (std::exception& e)
+        {
+            BOOST_LOG_TRIVIAL(error) << "Error in send";
+            BOOST_LOG_TRIVIAL(error) << e.what();
+            throw;
+        }
+    }
+
+    void send_json(std::string keyword, std::string message, std::unique_ptr<boost::asio::local::stream_protocol::socket>& socket)
+    {
+        try
+        {
+            //Make JSON message
+            boost::property_tree::ptree pt;
+            //Send the message
+            std::stringstream event_string;
+            pt.put<std::string>(keyword, message);
+            boost::property_tree::json_parser::write_json(event_string, pt);
+            BOOST_LOG_TRIVIAL(debug) << "Sending Response...";
+            send(*socket, event_string.str());
+        }
+        catch(std::exception& e)
+        {
+            BOOST_LOG_TRIVIAL(error) << "Error in send_json";
+            BOOST_LOG_TRIVIAL(error) << e.what();
+            throw;
+        }
+    }
+
 }
 
 
@@ -24,11 +72,9 @@ namespace psrdada_cpp{
 namespace meerkat {
 namespace fbfuse{
 
-    template <typename Handler>
-        BufferDump<Handler>::BufferDump(
+        BufferDump::BufferDump(
                 key_t key,
                 MultiLog& log,
-                Handler& handler,
                 std::string socket_name,
                 float max_fill_level,
                 std::size_t nantennas,
@@ -36,8 +82,7 @@ namespace fbfuse{
                 std::size_t total_nchannels,
                 float centre_freq,
                 float bandwidth)
-          : _handler(handler)
-          , _socket_name(socket_name)
+          : _socket_name(socket_name)
           , _max_fill_level(max_fill_level)
           , _nantennas(nantennas)
           , _subband_nchans(subband_nchannels)
@@ -54,8 +99,7 @@ namespace fbfuse{
         std::memset(_header_buffer, 0, sizeof(_header_buffer));
     }
 
-    template <typename Handler>
-        BufferDump<Handler>::~BufferDump()
+        BufferDump::~BufferDump()
         {
             if (_socket)
             {
@@ -64,8 +108,7 @@ namespace fbfuse{
         }
 
 
-    template<typename Handler>
-        void BufferDump<Handler>::setup()
+        void BufferDump::setup()
         {
             boost::system::error_code ec;
             ::unlink(_socket_name.c_str()); // Remove previous binding.
@@ -76,8 +119,7 @@ namespace fbfuse{
             return;
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::start()
+        void BufferDump::start()
         {
             BOOST_LOG_TRIVIAL(info) << "Starting BufferDump instance (listenting on socket '')";
             // Open Unix socket endpoint
@@ -86,14 +128,12 @@ namespace fbfuse{
             listen();
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::stop()
+        void BufferDump::stop()
         {
             _stop = true;
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::read_dada_header()
+        void BufferDump::read_dada_header()
         {
             BOOST_LOG_TRIVIAL(info) << "Parsing DADA buffer header";
             auto& header_block = _client->header_stream().next();
@@ -109,12 +149,10 @@ namespace fbfuse{
             BOOST_LOG_TRIVIAL(info) << "Parsing complete";
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::listen()
+        void BufferDump::listen()
         {
             while (!_stop)
             {
-                BOOST_LOG_TRIVIAL(info) << "Looking for events...";
                 if (has_event())
                 {
                     BOOST_LOG_TRIVIAL(info) << "Event found!!";
@@ -132,7 +170,7 @@ namespace fbfuse{
                 }
                 while (_client->data_buffer_percent_full() > _max_fill_level)
                 {
-                    BOOST_LOG_TRIVIAL(debug) << "DADA buffer fill level = " << _client->data_buffer_percent_full() << "%";
+                    BOOST_LOG_TRIVIAL(debug) << "DADA buffer fill level = " << _client->data_buffer_percent_full();
                     skip_block();
                 }
 
@@ -142,8 +180,7 @@ namespace fbfuse{
             }
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::skip_block()
+        void BufferDump::skip_block()
         {
             BOOST_LOG_TRIVIAL(debug) << "Skipping DADA block";
             _client->data_stream().next();
@@ -152,8 +189,7 @@ namespace fbfuse{
             BOOST_LOG_TRIVIAL(debug) << "Current block IDX = " << _current_block_idx;
         }
 
-    template <typename Handler>
-        bool BufferDump<Handler>::has_event() const
+        bool BufferDump::has_event() const
         {
             boost::system::error_code ec;
             boost::asio::local::stream_protocol::endpoint ep(_socket_name);
@@ -172,8 +208,7 @@ namespace fbfuse{
             return false;
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::get_event(Event& event)
+        void BufferDump::get_event(Event& event)
         {
             boost::system::error_code ec;
             boost::property_tree::ptree pt;
@@ -189,29 +224,33 @@ namespace fbfuse{
             event_stream << event_string;
             BOOST_LOG_TRIVIAL(info) << "Getting Event information...";
             boost::property_tree::json_parser::read_json(event_stream, pt);
-            event.utc_start = pt.get<long double>("utc_start");
-            event.utc_end = pt.get<long double>("utc_end");
-            event.dm = pt.get<float>("dm");
-            event.reference_freq = pt.get<float>("reference_freq");
-            event.trigger_id = pt.get<std::string>("trigger_id");
-            BOOST_LOG_TRIVIAL(info) << "Event info:\n"
-                << "UTC_START: " << event.utc_start << "\n"
-                << "UTC_END: " << event.utc_end << "\n"
-                << "DM: " << event.dm << "\n"
-                << "REF FREQ: " << event.reference_freq << "\n"
-                << "TRIGGER_ID: " << event.trigger_id;
-            std::memset(_event_msg_buffer, 0, 4096);
-            _socket->close(ec);
-            if (ec)
+            try
             {
-                BOOST_LOG_TRIVIAL(error) << "Error on Shutdown " << ec.message();
+                event.utc_start = pt.get<long double>("utc_start");
+                event.utc_end = pt.get<long double>("utc_end");
+                event.dm = pt.get<float>("dm");
+                event.reference_freq = pt.get<float>("reference_freq");
+                event.trigger_id = pt.get<std::string>("trigger_id");
+                BOOST_LOG_TRIVIAL(info) << "Event info:\n"
+                    << "UTC_START: " << event.utc_start << "\n"
+                    << "UTC_END: " << event.utc_end << "\n"
+                    << "DM: " << event.dm << "\n"
+                    << "REF FREQ: " << event.reference_freq << "\n"
+                    << "TRIGGER_ID: " << event.trigger_id;
+                std::memset(_event_msg_buffer, 0, 4096);
+                send_json("Response", "Event captured successfully", _socket);
+                _socket->close(ec);
+            }
+            catch(std::exception& e)
+            {
+                BOOST_LOG_TRIVIAL(error) << "Error in capturing event: " << e.what(); 
             }
         }
 
-    template <typename Handler>
-        void BufferDump<Handler>::capture(Event const& event)
+        void BufferDump::capture(Event const& event)
         {
 
+            bool write_flag=false;
             std::size_t output_left_idx = 0, output_right_idx = 0;
             std::size_t block_left_idx = 0;
             // block_right_idx = 0;
@@ -231,7 +270,7 @@ namespace fbfuse{
             BOOST_LOG_TRIVIAL(debug) << "Channel bandwidth = " << chan_bw;
             std::size_t nelements = _subband_nchans * _nantennas * nsamps;
             BOOST_LOG_TRIVIAL(debug) << "Resizing output buffer to " << nelements << " elements";
-            _tmp_buffer.resize(nelements);
+            _tmp_buffer.resize(nelements,0xffffffff);
 
 
             std::size_t block_bytes = _client->data_buffer_size();
@@ -239,13 +278,13 @@ namespace fbfuse{
 
             if (block_bytes % heap_group_bytes != 0)
             {
-                throw std::runtime_error("...");
+                throw std::runtime_error("Block bytes not divisible by heap group bytes");
             }
             std::size_t samples_per_block = 256 * (block_bytes / heap_group_bytes);
             BOOST_LOG_TRIVIAL(debug) << "Calculating sample offsets for each channel";
             for (std::size_t ii = 0; ii < _subband_nchans; ++ii)
             {
-                float channel_freq = (_centre_freq - chan_bw/2.0f) + ii * chan_bw;
+                double channel_freq = ((_centre_freq + _bw/2.0f) - chan_bw/2.0f) - ii * chan_bw;
                 BOOST_LOG_TRIVIAL(debug) << "Ref_freq: " << event.reference_freq << " channel_freq: " << channel_freq;
                 double delay = dm_delay(event.reference_freq, channel_freq, event.dm, tsamp);
                 left_edge_of_output[ii] = static_cast<std::size_t>(delay) + start_sample;
@@ -260,6 +299,7 @@ namespace fbfuse{
             std::size_t end_block_idx = right_edge_of_output[_subband_nchans-1] / samples_per_block;
             BOOST_LOG_TRIVIAL(debug) << "First DADA block to extract from = " << start_block_idx;
             BOOST_LOG_TRIVIAL(debug) << "Last DADA block to extract from = " << end_block_idx;
+            std::size_t block_diff = start_block_idx - _current_block_idx;
             while (_current_block_idx < start_block_idx)
             {
                 skip_block();
@@ -272,8 +312,10 @@ namespace fbfuse{
 
             while (_current_block_idx <= end_block_idx)
             {
+                write_flag= true;
                 BOOST_LOG_TRIVIAL(debug) << "Extracting data from block " << _current_block_idx;
                 RawBytes& block = _client->data_stream().next();
+                // TODO: Compute and add start and end times for the actual event
                 std::size_t block_start = _current_block_idx * samples_per_block;
                 std::size_t block_end = (_current_block_idx + 1) * samples_per_block;
                 for (std::size_t chan_idx = 0; chan_idx < _subband_nchans; ++chan_idx)
@@ -315,6 +357,7 @@ namespace fbfuse{
                         std::size_t offset_t = input_t % i_t;
                         std::size_t input_idx = group_t * i_aft + chan_idx * i_t + offset_t;
                         std::size_t output_idx = chan_idx * o_at + output_t;
+
                         for (std::size_t antenna_idx = 0; antenna_idx < _nantennas; ++antenna_idx)
                         {
                             _tmp_buffer[output_idx + antenna_idx * o_t] = block.ptr()[input_idx + antenna_idx * i_ft];
@@ -324,16 +367,43 @@ namespace fbfuse{
                 _client->data_stream().release();
                 _current_block_idx += 1;
             }
-            BOOST_LOG_TRIVIAL(debug) << "Updating header";
+            BOOST_LOG_TRIVIAL(debug) << "Writing header to file";
             RawBytes header(_header_buffer, 4096, 4096);
             Header parser(header);
+            //Fill in Event info
+            parser.set<long double>("UTC_START", event.utc_start);
+            parser.set<long double>("UTC_END", event.utc_end);
+            parser.set<long double>("DM", event.dm);
+            parser.set<long double>("FREQ", event. reference_freq);
+            parser.set<std::string>("TRIGGER_ID", event.trigger_id);
+            parser.set<std::size_t>("BLOCK_DIFF", block_diff);
+            // Open file for writing
+            std::string filename = time_now() + ".dat";
             std::size_t sample_clock_start = start_sample * _total_nchans * 2;
             parser.set<std::size_t>("SAMPLE_CLOCK_START", sample_clock_start);
-            _handler.init(header);
-            BOOST_LOG_TRIVIAL(debug) << "Outputing data to handler";
+            BOOST_LOG_TRIVIAL(debug) << "Outputing data to a file";
             std::size_t nbytes = _tmp_buffer.size() * sizeof(char4);
-            RawBytes output((char*) _tmp_buffer.data(), nbytes, nbytes);
-            _handler(output);
+
+            if (write_flag)
+            {
+                std::ofstream writer;
+                writer.open(filename, std::ofstream::out | std::ofstream::binary);
+                if (writer.is_open())
+                {
+                    BOOST_LOG_TRIVIAL(info) << "Opened output file " << filename;
+                }
+                else
+                {
+                    std::stringstream error_message;
+                    error_message << "Could not open file " << filename;
+                    BOOST_LOG_TRIVIAL(error) << error_message.str();
+                    throw std::runtime_error(error_message.str());
+                }
+                // Add an output path as a command line argument
+                writer.write(_header_buffer, 4096);
+                writer.write((char*) _tmp_buffer.data(), nbytes);
+                writer.close();
+            }
         }
 
 }
