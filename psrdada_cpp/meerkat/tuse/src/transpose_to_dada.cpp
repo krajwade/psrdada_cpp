@@ -85,7 +85,7 @@ namespace transpose{
                 {
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                         tmpoutdata_scrunch[ii] += (uint8_t)( (float)tmpoutdata[ (freqindex + offset ) + jj*new_nchans]/(float)(factor));
+                         tmpoutdata_scrunch[ii] += (uint8_t)( (float)tmpoutdata[ (freqindex + offset ) + jj*new_nchans]);
                     }
                     ++freqindex;
                 }
