@@ -52,7 +52,7 @@ namespace transpose{
 
         auto add_f = [&](std::uint8_t x, std::uint8_t y)
             {
-                return x + (uint8_t) ((float)y/(float)(tscrunch*fscrunch));
+                return x + (uint8_t) ((float)y/(float)(fscrunch));
             };
 
         // Convert to unsigned (add 128.0)
@@ -85,7 +85,7 @@ namespace transpose{
                 {
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                         tmpoutdata_scrunch[ii] += (uint8_t)( (float)tmpoutdata[ (freqindex + offset ) + jj*new_nchans]/(float)(tscrunch * fscrunch));
+                            tmpoutdata_scrunch[ii] += (uint8_t) ((float) tmpoutdata[ (freqindex + offset ) + jj*new_nchans]/(float) (tscrunch));
                     }
                     ++freqindex;
                 }
