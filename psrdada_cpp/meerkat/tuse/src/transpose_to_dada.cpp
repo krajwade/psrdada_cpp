@@ -52,7 +52,7 @@ namespace transpose{
 
         auto add_f = [&](std::uint8_t x, std::uint8_t y)
             {
-                return x + (uint8_t) ((float)y/(float)(fscrunch));
+                return x + static_cast<uint8_t>(static_cast<float>(y)/static_cast<float>(fscrunch));
             };
 
         // Convert to unsigned (add 128.0)
@@ -85,7 +85,7 @@ namespace transpose{
                 {
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                            tmpoutdata_scrunch[ii] += (uint8_t) ((float) tmpoutdata[ (freqindex + offset ) + jj*new_nchans]/(float) (tscrunch));
+                        tmpoutdata_scrunch[ii] += static_cast<uint8_t>(static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans])/static_cast<float>(tscrunch));
                     }
                     ++freqindex;
                 }
@@ -94,7 +94,11 @@ namespace transpose{
                     ++stepindex;
                     freqindex = 0;
                     offset += tscrunch*new_nchans;
-                    --ii;
+                    for (std::size_t jj = 0; jj < tscrunch; ++jj)
+                    {
+                        tmpoutdata_scrunch[ii] += static_cast<uint8_t>(static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans])/static_cast<float>(tscrunch));
+                    }
+                    ++freqindex;
                 }
             }
             std::copy(tmpoutdata_scrunch.begin(),tmpoutdata_scrunch.end(), transposed_data.ptr());
