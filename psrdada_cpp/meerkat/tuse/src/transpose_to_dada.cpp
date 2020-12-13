@@ -67,7 +67,7 @@ namespace transpose{
         //Method 2
         std::size_t new_nchans = skipallchans/fscrunch;
 
-        std::vector<char>tmpoutdata_scrunch(new_size,0);
+        std::vector<uint8_t>tmpoutdata_scrunch(new_size,0);
 
         if (fscrunch != 1)
         {
