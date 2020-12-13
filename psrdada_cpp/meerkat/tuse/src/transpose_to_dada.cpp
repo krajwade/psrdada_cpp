@@ -77,28 +77,33 @@ namespace transpose{
             }
         }
 
+        uint8_t sum=0;
         if (tscrunch !=1)
         {
             for (std::size_t ii = 0; ii < new_size; ++ii)
             {
                 if (ii < new_nchans*stepindex)
                 {
+                    sum = 0;
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                        tmpoutdata_scrunch[ii] += static_cast<uint8_t>(static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans])/static_cast<float>(tscrunch));
+                        sum += static_cast<uint8_t>(static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans])/static_cast<float>(tscrunch));
                     }
                     ++freqindex;
+                    tmpoutdata_scrunch[ii] = sum;
                 }
                 else
                 {
+                    sum = 0;
                     ++stepindex;
                     freqindex = 0;
                     offset += tscrunch*new_nchans;
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                        tmpoutdata_scrunch[ii] += static_cast<uint8_t>(static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans])/static_cast<float>(tscrunch));
+                        sum += static_cast<uint8_t>(static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans])/static_cast<float>(tscrunch));
                     }
                     ++freqindex;
+                    tmpoutdata_scrunch[ii] = sum;
                 }
             }
             std::copy(tmpoutdata_scrunch.begin(),tmpoutdata_scrunch.end(), transposed_data.ptr());
