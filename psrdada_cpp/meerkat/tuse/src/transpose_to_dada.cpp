@@ -67,7 +67,7 @@ namespace transpose{
         //Method 2
         std::size_t new_nchans = skipallchans/fscrunch;
 
-        std::vector<char>tmpoutdata_scrunch(new_size,0);
+        std::vector<unsigned char>tmpoutdata_scrunch(new_size,0);
 
         if (fscrunch != 1)
         {
@@ -91,7 +91,7 @@ namespace transpose{
                     {
                         sum = sum + static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans]);
                     }
-                    tmpoutdata_scrunch[ii] = static_cast<char>(sum/static_cast<float>(tscrunch) * std::sqrt(tscrunch));
+                    tmpoutdata_scrunch[ii] = static_cast<unsigned char>(sum/static_cast<float>(tscrunch) * std::sqrt(tscrunch) + 128.0);
                     ++freqindex;
                 }
                 else
@@ -105,11 +105,11 @@ namespace transpose{
                         sum += static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans]);
                     }
                     ++freqindex;
-                    tmpoutdata_scrunch[ii] = static_cast<char>(sum/static_cast<float>(tscrunch) * std::sqrt(tscrunch));
+                    tmpoutdata_scrunch[ii] = static_cast<unsigned char>(sum/static_cast<float>(tscrunch) * std::sqrt(tscrunch) + 128.0);
                 }
             }
             // Convert to unsigned
-            std::transform(tmpoutdata_scrunch.begin(), tmpoutdata_scrunch.end(), tmpoutdata_scrunch.begin(), std::bind2nd(std::plus<char>(),128));
+            //std::transform(tmpoutdata_scrunch.begin(), tmpoutdata_scrunch.end(), tmpoutdata_scrunch.begin(), std::bind2nd(std::plus<char>(),128));
             std::copy(tmpoutdata_scrunch.begin(),tmpoutdata_scrunch.end(), transposed_data.ptr());
         }
         else
