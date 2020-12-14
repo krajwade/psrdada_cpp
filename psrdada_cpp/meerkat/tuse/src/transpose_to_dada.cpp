@@ -60,7 +60,7 @@ namespace transpose{
         std::size_t new_size = tocopy/factor;
         std::size_t new_nchans = skipallchans/fscrunch;
         std::size_t outindex = 0;
-        std::vector<unsigned char>tmpoutdata_scrunch(new_size,0);
+        std::vector<char>tmpoutdata_scrunch(new_size,0);
         float sum=0.0;
 
         // Method 1
@@ -75,10 +75,10 @@ namespace transpose{
                     {
                         for (std::size_t mm = 0; mm < fscrunch; ++ mm)
                         {
-                            sum += static_cast<float>(tmpoutdata[mm + ll*skipallchans + jj*fscrunch + ii*skipallchans*nsamps]);
+                            sum += static_cast<float>(tmpoutdata[mm + ll*skipallchans + jj*fscrunch + ii*skipallchans*tscrunch]);
                         }
                     }
-                    tmpoutdata_scrunch[outindex] = static_cast<unsigned char>( ((sum/static_cast<float>(factor)) * std::sqrt(factor)) + 128.0);
+                    tmpoutdata_scrunch[outindex] = static_cast<char>( ((sum/static_cast<float>(factor)) * std::sqrt(factor)));
                     ++outindex;
                 }
             }
