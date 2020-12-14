@@ -29,7 +29,6 @@ namespace transpose{
         const size_t tocopy = ngroups * nsamples * nfreq * nchans;
         std::vector<char> tmpindata(tocopy / ngroups);
         std::vector<char>tmpoutdata(tocopy);
-        std::copy(input_data.ptr(), input_data.ptr() + tocopy, tmpindata.begin());
         size_t skipgroup = nchans * nsamples * nfreq * nbeams;
         size_t skipbeam = beamnum * nchans * nsamples * nfreq;
         size_t skipband = nchans * nsamples;
@@ -50,7 +49,7 @@ namespace transpose{
                 std::reverse(tmpoutdata.begin() + isamp * skipallchans + igroup *tocopy/ngroups, tmpoutdata.begin() + isamp * skipallchans + igroup *tocopy/ngroups + nfreq*nchans);
 
             } // SAMPLES LOOP
-        } // GROUP LOOP*/
+        } // GROUP LOOP
 
                 /* Scrunching the data */
         std::size_t factor = tscrunch*fscrunch;
@@ -60,10 +59,10 @@ namespace transpose{
         std::size_t new_size = tocopy/factor;
         std::size_t new_nchans = skipallchans/fscrunch;
         std::size_t outindex = 0;
-        std::vector<char>tmpoutdata_scrunch(new_size,0);
+        std::vector<unsigned char>tmpoutdata_scrunch(new_size,0);
 
         // Method 1
-        /*if (tscrunch != 1 || fscrunch !=1)
+        if (tscrunch != 1 || fscrunch !=1)
         {
             for (std::size_t ii = 0; ii < new_nsamples; ++ii)
             {
@@ -87,10 +86,10 @@ namespace transpose{
         {
             std::transform(tmpoutdata.begin(), tmpoutdata.end(), tmpoutdata.begin(), std::bind2nd(std::plus<char>(),128));
             std::copy(tmpoutdata.begin(),tmpoutdata.end(), transposed_data.ptr());
-        }*/
+        }
 
         // Method 1
-        auto add_f = [&](int8_t x, int8_t y)
+        /*auto add_f = [&](int8_t x, int8_t y)
             {
                 return x + static_cast<int8_t>(static_cast<float>(y)/static_cast<float>(fscrunch));
             };
@@ -102,9 +101,9 @@ namespace transpose{
             {
                 tmpoutdata[ii] = std::accumulate(tmpoutdata.begin() + ii*fscrunch, tmpoutdata.begin() + (ii + 1)* fscrunch, 0, add_f);
                 tmpoutdata[ii] = static_cast<char>(static_cast<float>(tmpoutdata[ii]) * std::sqrt(fscrunch));
-            }
+            }*/
             /* Scale the fscrunched data */
-        }
+        /*}
 
         float sum=0;
         if (tscrunch !=1)
@@ -144,7 +143,7 @@ namespace transpose{
             //convert to unsigned
             std::transform(tmpoutdata.begin(), tmpoutdata.end(), tmpoutdata.begin(), std::bind2nd(std::plus<char>(),128));
             std::copy(tmpoutdata.begin(),tmpoutdata.begin() + new_size, transposed_data.ptr());
-        }
+        }*/
         //copy to output
     }
 } //transpose
