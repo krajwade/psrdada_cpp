@@ -20,14 +20,16 @@ namespace transpose{
     void do_transpose(RawBytes& transposed_data, RawBytes& input_data,std::uint32_t nchans, std::uint32_t nsamples, std::uint32_t nfreq, std::uint32_t beamnum, std::uint32_t nbeams, std::uint32_t ngroups, std::size_t tscrunch, std::size_t fscrunch)
     {
         // make copies of arrays to be transposed
+        //
         if (input_data.total_bytes() % (nfreq * nchans * nsamples * nbeams) != 0)
         {
             auto sug_size = nfreq * nchans * nsamples * nbeams * ngroups;
-            throw std::runtime_error(std::string("Incorrect size of the DADA block. Should be a multiple of heap group size. Suggested size is:") + std::to_string(sug_size) + std::string("bytes")); 
+            throw std::runtime_error(std::string("Incorrect size of the DADA block. Should be a multiple of heap group size. Suggested size is:") + std::to_string(sug_size) + std::string("bytes"));
         }
         const size_t tocopy = ngroups * nsamples * nfreq * nchans;
         std::vector<char> tmpindata(tocopy / ngroups);
         std::vector<char>tmpoutdata(tocopy);
+        std::copy(input_data.ptr(), input_data.ptr() + tocopy, tmpindata.begin());
         size_t skipgroup = nchans * nsamples * nfreq * nbeams;
         size_t skipbeam = beamnum * nchans * nsamples * nfreq;
         size_t skipband = nchans * nsamples;
@@ -42,21 +44,19 @@ namespace transpose{
                 for (unsigned int iband = 0; iband < nfreq; ++iband)
                 {
                     std::copy(tmpindata.begin() + iband * skipband + isamp * nchans, tmpindata.begin() + iband * skipband + isamp * nchans + nchans, tmpoutdata.begin() + iband * nchans + isamp * skipallchans + igroup * tocopy/ngroups);
-                } // BAND LOOP
+                } // BAND LOOP*/
 
                 /* Reverse the channel array */
                 std::reverse(tmpoutdata.begin() + isamp * skipallchans + igroup *tocopy/ngroups, tmpoutdata.begin() + isamp * skipallchans + igroup *tocopy/ngroups + nfreq*nchans);
 
             } // SAMPLES LOOP
-        } // GROUP LOOP
+        } // GROUP LOOP*/
 
-        auto add_f = [&](std::uint8_t x, std::uint8_t y)
+        auto add_f = [&](int8_t x, int8_t y)
             {
-                return x + static_cast<uint8_t>(static_cast<float>(y)/static_cast<float>(fscrunch));
+                return x + static_cast<int8_t>(static_cast<float>(y)/static_cast<float>(fscrunch));
             };
 
-        // Convert to unsigned (add 128.0)
-        std::transform(tmpoutdata.begin(), tmpoutdata.end(), tmpoutdata.begin(), std::bind2nd(std::plus<char>(),128));
 
         std::size_t factor = tscrunch*fscrunch;
 
@@ -67,17 +67,19 @@ namespace transpose{
         //Method 2
         std::size_t new_nchans = skipallchans/fscrunch;
 
-        std::vector<uint8_t>tmpoutdata_scrunch(new_size,0);
+        std::vector<char>tmpoutdata_scrunch(new_size,0);
 
         if (fscrunch != 1)
         {
             for (std::size_t ii = 0; ii < tocopy/fscrunch; ++ii)
             {
                 tmpoutdata[ii] = std::accumulate(tmpoutdata.begin() + ii*fscrunch, tmpoutdata.begin() + (ii + 1)* fscrunch, 0, add_f);
+                tmpoutdata[ii] = static_cast<char>(static_cast<float>(tmpoutdata[ii]) * std::sqrt(fscrunch));
             }
+            /* Scale the fscrunched data */
         }
 
-        uint8_t sum=0;
+        float sum=0;
         if (tscrunch !=1)
         {
             for (std::size_t ii = 0; ii < new_size; ++ii)
@@ -87,10 +89,10 @@ namespace transpose{
                     sum = 0;
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                        sum += static_cast<uint8_t>(static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans])/static_cast<float>(tscrunch));
+                        sum = sum + static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans]);
                     }
+                    tmpoutdata_scrunch[ii] = static_cast<char>(sum/static_cast<float>(tscrunch) * std::sqrt(tscrunch));
                     ++freqindex;
-                    tmpoutdata_scrunch[ii] = sum;
                 }
                 else
                 {
@@ -100,16 +102,20 @@ namespace transpose{
                     offset += tscrunch*new_nchans;
                     for (std::size_t jj = 0; jj < tscrunch; ++jj)
                     {
-                        sum += static_cast<uint8_t>(static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans])/static_cast<float>(tscrunch));
+                        sum += static_cast<float>(tmpoutdata[ (freqindex + offset ) + jj*new_nchans]);
                     }
                     ++freqindex;
-                    tmpoutdata_scrunch[ii] = sum;
+                    tmpoutdata_scrunch[ii] = static_cast<char>(sum/static_cast<float>(tscrunch) * std::sqrt(tscrunch));
                 }
             }
+            // Convert to unsigned
+            std::transform(tmpoutdata_scrunch.begin(), tmpoutdata_scrunch.end(), tmpoutdata_scrunch.begin(), std::bind2nd(std::plus<char>(),128));
             std::copy(tmpoutdata_scrunch.begin(),tmpoutdata_scrunch.end(), transposed_data.ptr());
         }
         else
         {
+            //convert to unsigned
+            std::transform(tmpoutdata.begin(), tmpoutdata.end(), tmpoutdata.begin(), std::bind2nd(std::plus<char>(),128));
             std::copy(tmpoutdata.begin(),tmpoutdata.begin() + new_size, transposed_data.ptr());
         }
         //copy to output

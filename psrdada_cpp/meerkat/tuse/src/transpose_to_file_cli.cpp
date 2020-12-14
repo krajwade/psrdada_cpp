@@ -59,7 +59,7 @@ int main(int argc, char** argv)
             "The number of frequency blocks in the stream")
         ("tscrunch,tscr", po::value<std::size_t>(&tscrunch)->default_value(1),
             "Time scrunching factor")
-        ("fscrunch,fscr", po::value<std::size_t>(&fscrunch)->default_value(1),
+        ("fscrunch,d", po::value<std::size_t>(&fscrunch)->default_value(1),
             "Frequency Scrunching factor");
 
 
