@@ -63,7 +63,7 @@ namespace psrdada_cpp
         return std::distance(block.ptr(),ptr);
     }
 
-    std::size_t SigprocHeader::write_header(char* const& ptr, FilHead& ph)
+    std::size_t SigprocHeader::write_header(char*& ptr, FilHead& ph)
     {
 	    char* new_ptr = ptr;
         header_write(new_ptr,"HEADER_START");

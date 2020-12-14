@@ -77,7 +77,7 @@ namespace transpose{
                             sum += static_cast<float>(tmpoutdata[mm + ll*skipallchans + jj*fscrunch + ii*skipallchans*tscrunch]);
                         }
                     }
-                    tmpoutdata_scrunch[outindex] = static_cast<unsigned char>( ((sum/static_cast<float>(factor)) * std::sqrt(factor)));
+                    tmpoutdata_scrunch[outindex] = static_cast<unsigned char>( ((sum/static_cast<float>(factor)) * std::sqrt(factor)) + 128.0);
                     ++outindex;
                 }
             }
@@ -86,7 +86,7 @@ namespace transpose{
         else
         {
             std::transform(tmpoutdata.begin(), tmpoutdata.end(), tmpoutdata.begin(), std::bind2nd(std::plus<char>(),128));
-            std::copy(tmpoutdata.begin(),tmpoutdata.begin() + new_size, transposed_data.ptr());
+            std::copy(tmpoutdata.begin(),tmpoutdata.end(), transposed_data.ptr());
         }
 
         // Method 1

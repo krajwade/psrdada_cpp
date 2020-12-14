@@ -74,7 +74,7 @@ public:
     SigprocHeader();
     ~SigprocHeader();
     std::size_t write_header(RawBytes& block, PsrDadaHeader ph);
-    std::size_t write_header(char* const& ptr, FilHead& header); //should be const on FilHead
+    std::size_t write_header(char*& ptr, FilHead& header); //should be const on FilHead
     void read_header(std::istream &infile, FilHead &header);
     void read_header(RawBytes& block, FilHead &header);
     double hhmmss_to_double(std::string const& val);
